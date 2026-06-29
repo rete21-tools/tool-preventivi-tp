@@ -1,0 +1,2830 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tesser Antenne — Import Preventivi Fornitore (PDF/Word) · v8</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --verde:#22c55e;--verde-dark:#15803d;
+    --grigio-bg:#f1f5f9;--grigio-bordo:#cbd5e1;
+    --grigio-scuro:#1e293b;
+  }
+  html{scroll-behavior:smooth}
+  body{font-family:'Montserrat',Arial,sans-serif;color:var(--grigio-scuro);background:var(--grigio-bg);line-height:1.5;font-size:14px}
+
+  /* ── Shell ── */
+  .app-shell{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+  .topbar{background:#e0f2fe;color:#1e293b;font-size:11px;padding:5px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #bae6fd}
+  .topbar strong{color:#0369a1}
+
+  header.main{background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .logo-mark{font-size:20px;font-weight:900;color:#1e3a8a;letter-spacing:-.5px}
+
+  .hdr-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .cliente-cfg{font-size:12px;font-weight:700;color:#1e3a5f;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:5px 12px;min-width:280px;outline:none}
+  .cliente-cfg:focus{border-color:#3b82f6}
+  .cliente-cfg::placeholder{color:#94a3b8;font-weight:500}
+
+  .btn-hdr{background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:6px;font-family:inherit;font-size:11px;font-weight:700;padding:5px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:28px;white-space:nowrap}
+  .btn-hdr:hover{background:#e2e8f0}
+  .btn-danger{color:#b91c1c!important;border-color:#fca5a5!important;background:#fef2f2!important}
+  .btn-danger:hover{background:#fee2e2!important}
+  .btn-save{color:#166534!important;border-color:#86efac!important;background:#f0fdf4!important}
+  .btn-save:hover{background:#dcfce7!important}
+  .app-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;font-size:12px;font-weight:700;padding:11px 18px;border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.3);white-space:pre-line;text-align:center;opacity:0;pointer-events:none;transition:all .22s;z-index:3000;max-width:80vw}
+  .app-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ── Layout due colonne con splitter ── */
+  .two-col-layout{display:flex;flex-direction:row;flex:1 1 0;min-height:0;overflow:hidden;gap:0}
+  .col-sx{display:flex;flex-direction:column;min-width:220px;max-width:80vw;min-height:0;overflow:hidden;background:var(--grigio-bg)}
+  .col-dx{display:flex;flex-direction:column;flex:1 1 0;min-width:180px;min-height:0;overflow:hidden;background:#fff}
+  .col-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e8f0}
+  .col-head-a{color:#166534;background:linear-gradient(90deg,#f0fdf4,#f8fff9);border-bottom-color:#bbf7d0}
+  .col-head-b{color:#1e40af;background:linear-gradient(90deg,#eff6ff,#f8faff);border-bottom-color:#bfdbfe}
+  .col-head-label{display:flex;align-items:center;gap:8px}
+  .col-head-badge{font-size:10px;font-weight:700;background:rgba(0,0,0,.06);border-radius:6px;padding:2px 8px;text-transform:none;letter-spacing:0}
+  .col-body-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .col-body-scroll::-webkit-scrollbar{width:6px}
+  .col-body-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+
+  /* ── Splitter ── */
+  .col-splitter{flex:0 0 8px;cursor:col-resize;background:#e2e8f0;display:flex;align-items:center;justify-content:center;transition:background .15s;position:relative;z-index:10;user-select:none}
+  .col-splitter:hover,.col-splitter.dragging{background:#bfdbfe}
+  .col-splitter::before{content:'';width:3px;height:40px;border-radius:3px;background:#94a3b8;transition:background .15s,height .15s}
+  .col-splitter:hover::before,.col-splitter.dragging::before{background:#2563eb;height:70px}
+
+  /* ── Vuoto B Export ── */
+  .export-empty{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#cbd5e1;padding:40px}
+  .export-empty-icon{font-size:52px}
+  .export-empty-label{font-size:13px;font-weight:700;color:#94a3b8;text-align:center}
+
+  /* ── Griglia preventivi (ora in pila) ── */
+  .preventivi-grid{display:flex;flex-direction:column;gap:10px}
+
+  /* ── Pannello singolo preventivo ── */
+  .prev-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:visible;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;flex-direction:column}
+  .prev-panel-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,#f0fdf4,#ecfdf5);border-bottom:1px solid #bbf7d0;border-radius:12px 12px 0 0}
+  .prev-panel-num{flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:#166534;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
+  .prev-panel-titolo-edit{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:800;color:#166534;text-transform:uppercase;outline:none;flex:1;min-width:0}
+  .prev-panel-badge{font-size:10px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:2px 8px;white-space:nowrap}
+  .prev-panel-badge.empty{color:#94a3b8;background:#f8fafc;border-color:#e2e8f0}
+  .btn-reset-slot{background:none;border:none;cursor:pointer;color:#94a3b8;font-size:14px;padding:2px 4px;line-height:1;border-radius:4px}
+  .btn-reset-slot:hover{background:#fee2e2;color:#b91c1c}
+
+  .prev-drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:18px 12px;border:2px dashed #86efac;border-radius:8px;margin:12px;background:#f0fdf4;cursor:pointer;transition:background .15s,border-color .15s}
+  .prev-drop-zone:hover{border-color:#16a34a;background:#dcfce7}
+  .prev-drop-icon{font-size:22px}
+  .prev-drop-label{font-size:11px;font-weight:700;color:#16a34a;text-align:center}
+  input[type=file].prev-file-input{display:none}
+
+  .prev-righe-wrap{padding:0 10px 10px}
+  .prev-info-bar{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#f0fdf4;border-radius:6px;margin-bottom:6px;font-size:10px;font-weight:700;color:#166534}
+
+  /* ── Tabella mini ── */
+  .prev-mini-table{width:100%;border-collapse:collapse;font-size:10px}
+  .prev-mini-table thead th{background:#f0fdf4;color:#166534;font-size:9px;font-weight:800;text-transform:uppercase;padding:4px 6px;text-align:left;border-bottom:1px solid #bbf7d0}
+  .prev-mini-table thead th.th-r{text-align:right}
+  .prev-mini-table tbody tr{border-bottom:1px solid #f0fdf4}
+  .prev-mini-table tbody tr:hover{background:#f8fff6}
+  .prev-mini-table td{padding:4px 6px;color:#334155;vertical-align:middle}
+  .prev-mini-table td.td-r{text-align:right;font-weight:700}
+  .prev-mini-table td.td-cod{font-weight:700;color:#166534;font-size:9px}
+  .prev-mini-table tr.pmt-descr td{color:#94a3b8;font-style:italic;background:#fafafa}
+  .prev-mini-table tr.pmt-sconto td{background:#fef2f2;color:#b91c1c!important;font-weight:700}
+  .prev-mini-table td.cell-edited{background:#fef9c3!important;box-shadow:inset 0 0 0 1px #fcd34d}
+  .imp-state{display:inline-block;font-size:8px;font-weight:800;padding:1px 5px;border-radius:4px;text-decoration:none;vertical-align:middle}
+  .imp-state.st-none{background:#fee2e2;color:#b91c1c}
+  .imp-state.st-dist{background:#dbeafe;color:#1e40af}
+  .prev-mini-table .imp-struck{text-decoration:line-through;color:#94a3b8}
+  .text-muted{opacity:.4}
+  .text-muted td{text-decoration:line-through}
+  .col-id{width:26px;text-align:center;font-weight:800;color:#94a3b8;font-size:9px}
+
+  /* ── Totale slot ── */
+  .slot-tot-bar{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#f0fdf4;border-top:1px solid #bbf7d0;font-size:10px;font-weight:800;color:#166534}
+  .slot-tot-val{font-size:13px;color:#15803d}
+
+  /* ── Configuratore colonne ── */
+
+  /* ── Totali doc origine ── */
+  .prev-totali-table thead th{background:#eff6ff;color:#1e40af}
+
+  /* ── Modal ── */
+  .modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+  .modal-box{background:#fff;border-radius:14px;max-width:420px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden;animation:modalIn .15s ease}
+  @keyframes modalIn{from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+  .modal-head{padding:12px 18px;background:linear-gradient(90deg,#166534,#16a34a);color:#fff;font-size:13px;font-weight:800}
+  .modal-body{padding:16px 18px;font-size:12px;line-height:1.55;color:#334155}
+  .modal-foot{display:flex;gap:10px;padding:0 18px 16px}
+  .modal-foot button{flex:1;padding:9px;border:none;border-radius:8px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+  .modal-si{background:#166534;color:#fff}
+  .modal-si:hover{background:#15803d}
+  .modal-no{background:#e2e8f0;color:#334155}
+  .modal-no:hover{background:#cbd5e1}
+
+  @media print{
+    .topbar,header.main,.btn-reset-slot,.prev-drop-zone,.col-splitter,.col-dx,.col-head-b{display:none!important}
+    body{background:#fff}
+    .two-col-layout{height:auto;display:block}
+    .col-sx{max-width:100%;overflow:visible}
+    .prev-panel{box-shadow:none;border:1px solid #e2e8f0;break-inside:avoid}
+  }
+
+  /* ── Pannello apprendimento header ── */
+  .learn-wrap{padding:10px 12px 12px}
+  .learn-title{font-size:11px;font-weight:800;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:7px;padding:7px 12px;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .learn-subtitle{font-size:10px;color:#64748b;margin-bottom:6px;font-weight:600}
+  .learn-lines{display:flex;flex-direction:column;gap:3px;max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:7px;padding:6px;background:#f8fafc}
+  .learn-line{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;border:1px solid transparent;transition:all .12s}
+  .learn-line:hover{background:#fef9c3;border-color:#fcd34d}
+  .learn-line.learn-selected{background:#dcfce7;border-color:#22c55e}
+  .learn-line-txt{font-size:10px;font-family:monospace;color:#334155;flex:1;white-space:pre-wrap;word-break:break-all}
+  .learn-line-num{font-size:9px;color:#94a3b8;min-width:22px;text-align:right;font-weight:700}
+  .learn-actions{display:flex;gap:8px;margin-top:8px}
+  .btn-learn-ok{background:#166534;color:#fff;border:none;border-radius:6px;padding:7px 16px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;flex:1}
+  .btn-learn-ok:hover{background:#15803d}
+  .btn-learn-ok:disabled{opacity:.4;cursor:not-allowed}
+  .btn-learn-skip{background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;border-radius:6px;padding:7px 12px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
+  .btn-learn-skip:hover{background:#e2e8f0}
+  .learn-db-badge{font-size:9px;color:#166534;background:#dcfce7;border:1px solid #bbf7d0;border-radius:5px;padding:2px 7px;font-weight:700}
+
+  /* ── Maschera mappatura colonne (Fase 2 apprendimento) ── */
+  .map-wrap{padding:10px 12px 12px}
+  .map-title{font-size:11px;font-weight:800;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:7px 12px;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .map-subtitle{font-size:10px;color:#64748b;margin-bottom:8px;font-weight:600;line-height:1.4}
+  .map-table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:10px}
+  .map-table th{background:#eff6ff;color:#1e40af;font-size:9px;font-weight:800;text-transform:uppercase;padding:5px 8px;text-align:left;border-bottom:2px solid #bfdbfe}
+  .map-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  .map-table tr:hover td{background:#f8faff}
+  .map-col-header{font-weight:800;color:#1e293b;font-family:monospace;font-size:10px}
+  .map-col-value{color:#334155;font-size:10px;max-width:260px;word-break:break-word;line-height:1.35}
+  .map-col-value.long{max-height:60px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  .map-select{width:100%;padding:3px 5px;border:1px solid #bfdbfe;border-radius:5px;font-family:inherit;font-size:10px;font-weight:700;color:#1e40af;background:#fff;outline:none;cursor:pointer}
+  .map-select:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.12)}
+  .map-select.mapped-ok{border-color:#86efac;color:#166534}
+  .map-select.mapped-skip{border-color:#e2e8f0;color:#94a3b8}
+  .map-actions{display:flex;gap:8px;margin-top:4px}
+  .btn-map-ok{background:#1e40af;color:#fff;border:none;border-radius:6px;padding:7px 16px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;flex:1}
+  .btn-map-ok:hover{background:#1d4ed8}
+  .btn-map-back{background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;border-radius:6px;padding:7px 12px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
+  .btn-map-back:hover{background:#e2e8f0}
+  .map-field-badge{display:inline-block;font-size:8px;padding:1px 5px;border-radius:4px;font-weight:800;text-transform:uppercase;margin-left:4px}
+  .map-field-badge.auto{background:#dcfce7;color:#166534}
+  .map-field-badge.manual{background:#fef9c3;color:#92400e}
+
+  /* ── Splitter codice/descrizione nella maschera mappatura ── */
+  .split-tokens{display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding:4px 0}
+  .split-token{display:inline-block;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:10px;cursor:pointer;border:1px solid transparent;transition:all .12s;user-select:none;word-break:break-all}
+  .split-token.tok-code{background:#dcfce7;color:#166534;border-color:#86efac}
+  .split-token.tok-descr{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+  .split-token.tok-descr-muted{background:#f1f5f9;color:#94a3b8;border-color:#e2e8f0}
+  .split-hint{font-size:9px;color:#64748b;margin-top:3px;font-style:italic}
+  .split-arrow{font-size:11px;color:#94a3b8;padding:0 2px}
+
+  /* ── Anteprima risultato mappatura (testo descrizione completo) ── */
+  .map-preview{margin:2px 0 12px;border:1px solid #bfdbfe;border-radius:8px;background:#f8faff;padding:9px 11px}
+  .map-preview-h{font-size:10px;font-weight:800;color:#1e40af;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .map-preview-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
+  .map-preview-lbl{flex:0 0 74px;font-size:9px;font-weight:800;text-transform:uppercase;color:#64748b;padding-top:3px}
+  .map-preview-code{font-family:monospace;font-size:11px;font-weight:800;color:#166534;background:#dcfce7;border:1px solid #bbf7d0;border-radius:5px;padding:3px 8px;word-break:break-all}
+  .map-preview-descr{flex:1;font-size:11px;color:#334155;background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:5px 9px;line-height:1.45;max-height:170px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+  .map-preview-note{font-size:9px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:3px 8px;margin-top:2px;line-height:1.4}
+
+  /* ══ COLONNA B — EXPORT ══════════════════════════════════ */
+  .exp-shell{display:flex;flex-direction:column;height:100%;min-height:0}
+
+  /* Barra parametri */
+  .exp-params-global{flex:0 0 auto;display:flex;align-items:center;padding:6px 14px;background:#f8faff;border-bottom:1px solid #bfdbfe;gap:8px}
+  .exp-params-slot{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 12px;background:#f0f7ff;border-bottom:1px solid #bfdbfe;justify-content:flex-start}
+  .exp-param-group{display:flex;align-items:center;gap:6px}
+  .exp-param-label{font-size:10px;font-weight:800;text-transform:uppercase;color:#1e40af;white-space:nowrap}
+  .exp-param-input{padding:6px 10px;border:1.5px solid #bfdbfe;border-radius:6px;font-family:inherit;font-size:15px;font-weight:800;color:#1e3a8a;width:90px;outline:none;background:#fff;text-align:center}
+  .exp-param-input:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.12)}
+  .exp-param-input::-webkit-inner-spin-button,.exp-param-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .exp-param-input{-moz-appearance:textfield}
+  .ric-inp::-webkit-inner-spin-button,.ric-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .ric-inp{-moz-appearance:textfield}
+  .exp-param-sep{color:#cbd5e1;font-size:16px;padding:0 2px}
+  .exp-param-unit{font-size:11px;color:#64748b;font-weight:700}
+  .exp-tot-badge{margin-left:auto;font-size:13px;font-weight:900;color:#166534;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:4px 14px;white-space:nowrap}
+
+  /* Corpo scroll */
+  .exp-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:14px}
+  .exp-body::-webkit-scrollbar{width:6px}
+  .exp-body::-webkit-scrollbar-thumb{background:#bfdbfe;border-radius:6px}
+
+  /* Blocco preventivo */
+  .exp-block{background:#fff;border:1px solid #bfdbfe;border-radius:10px;overflow:visible;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .exp-block-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,#eff6ff,#f8faff);border-bottom:1px solid #bfdbfe;border-radius:10px 10px 0 0}
+  .exp-block-num{width:20px;height:20px;border-radius:5px;background:#1e40af;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .exp-block-title{font-size:11px;font-weight:800;color:#1e40af;text-transform:uppercase;flex:1}
+  .exp-block-subtot{font-size:12px;font-weight:900;color:#166534;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:2px 10px;white-space:nowrap}
+
+  /* Tabella export */
+  .exp-table{width:100%;border-collapse:collapse;font-size:10px}
+  .exp-table thead th{background:#eff6ff;color:#1e40af;font-size:9px;font-weight:800;text-transform:uppercase;padding:5px 6px;text-align:left;border-bottom:2px solid #bfdbfe;white-space:nowrap;position:sticky;top:0;z-index:2}
+  .exp-table thead th.th-r{text-align:right}
+  .exp-table thead th.th-c{text-align:center}
+  .exp-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
+  .exp-table tbody tr:hover{background:#f8faff}
+  .exp-table tbody tr.exp-row-off{opacity:.35}
+  .exp-table tbody tr.exp-row-sconto td{background:#fef2f2}
+  .exp-table tbody tr.exp-row-sconto td.td-cod,
+  .exp-table tbody tr.exp-row-sconto td.td-r,
+  .exp-table tbody tr.exp-row-sconto td.td-fin{color:#b91c1c!important;font-weight:800}
+  /* righe escluse dalla stampa (annullate / ridistribuite) */
+  .exp-table tbody tr.exp-row-excl td{opacity:.7}
+  .exp-table tbody tr.exp-row-excl .exp-strike,
+  .exp-table tbody tr.exp-row-excl td.exp-strike{text-decoration:line-through;color:#94a3b8!important}
+  .exp-state-badge{display:inline-block;font-size:8px;font-weight:800;padding:2px 6px;border-radius:5px;white-space:nowrap;text-decoration:none}
+  .exp-state-badge.st-none{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+  .exp-state-badge.st-dist{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}
+  .exp-mode-toggle{display:inline-flex;gap:3px;justify-content:center}
+  .exp-mode-btn{font-family:inherit;font-size:8px;font-weight:800;padding:3px 6px;border-radius:5px;border:1px solid #cbd5e1;background:#fff;color:#64748b;cursor:pointer;white-space:nowrap}
+  .exp-mode-btn:hover{background:#f1f5f9}
+  .exp-mode-btn.on-none{background:#fee2e2;color:#b91c1c;border-color:#fca5a5}
+  .exp-mode-btn.on-dist{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+  /* celle modificabili in export */
+  .exp-edit{outline:none;cursor:text;border-radius:4px;padding:1px 3px;min-height:14px}
+  .exp-edit:hover{background:#f8faff;box-shadow:inset 0 0 0 1px #bfdbfe}
+  .exp-edit:focus{background:#fffbeb;box-shadow:inset 0 0 0 1px #f59e0b;text-decoration:none}
+  .exp-edit.exp-edited{background:#fef9c3;box-shadow:inset 0 0 0 1px #fcd34d}
+  /* scheda estesa di catalogo */
+  .exp-scheda-bar{margin-top:3px}
+  .exp-scheda-toggle{font-family:inherit;font-size:8px;font-weight:800;border:1px solid #cbd5e1;background:#fff;color:#64748b;border-radius:5px;padding:2px 6px;cursor:pointer}
+  .exp-scheda-toggle:hover{background:#f1f5f9}
+  .exp-scheda-toggle.has-data{border-color:#86efac;color:#166534;background:#f0fdf4}
+  .exp-table tbody tr.exp-scheda-row td{background:#f8fafc;border-bottom:1px solid #e2e8f0}
+  .exp-scheda-cell{padding:8px 10px!important}
+  .exp-scheda{display:flex;gap:12px;align-items:flex-start}
+  .exp-scheda-imgwrap{flex:0 0 112px;display:flex;flex-direction:column;gap:4px}
+  .exp-scheda-pic{width:112px;height:112px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
+  .exp-scheda-noimg{width:112px;height:80px;display:flex;align-items:center;justify-content:center;border:1px dashed #cbd5e1;border-radius:6px;color:#94a3b8;font-size:9px;text-align:center;padding:4px}
+  .exp-scheda-url{font-family:inherit;font-size:9px;padding:3px 5px;border:1px solid #cbd5e1;border-radius:5px;outline:none;width:112px}
+  .exp-scheda-url:focus{border-color:#3b82f6}
+  .exp-scheda-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .exp-scheda-lbl{font-size:9px;font-weight:800;color:#1e40af;text-transform:uppercase}
+  .exp-scheda-lbl span{font-weight:600;color:#94a3b8;text-transform:none}
+  .exp-scheda-area{min-height:42px;border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:10px;line-height:1.45;background:#fff;color:#334155;white-space:pre-wrap}
+  .exp-scheda-area:empty:before{content:attr(data-ph);color:#cbd5e1}
+  .exp-scheda-area.exp-edited{background:#fef9c3;box-shadow:inset 0 0 0 1px #fcd34d}
+  .exp-table tbody tr.exp-row-descr td{color:#94a3b8;font-style:italic;background:#fafafa}
+  .exp-table td{padding:4px 6px;vertical-align:middle}
+  .exp-table td.td-c{text-align:center}
+  .exp-table td.td-r{text-align:right}
+  .exp-table td.td-cod{font-weight:800;color:#1e40af;font-size:9px}
+  .exp-table td.td-fin{text-align:right;font-weight:900;color:#166534}
+  .exp-table td.td-mob{text-align:right;color:#0369a1;font-size:9px;font-weight:700}
+  .exp-table tfoot td{background:#1e3a8a;color:#fff;font-weight:900;font-size:10px;padding:5px 6px;text-align:right}
+  .exp-table tfoot td.td-l{text-align:left}
+
+  /* Input ricarico per riga */
+  .ric-inp{width:44px;padding:2px 4px;border:1px solid #bfdbfe;border-radius:4px;font-family:inherit;font-size:10px;font-weight:800;color:#1e40af;text-align:right;outline:none;background:#f8faff}
+  .ric-inp:focus{border-color:#3b82f6}
+  .ric-inp.ric-custom{border-color:#f59e0b;background:#fefce8;color:#92400e}
+
+  /* Totale generale */
+  .exp-grand-total{flex:0 0 auto;background:#1e3a8a;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:0 0 10px 10px;margin:0 14px 14px}
+  .exp-grand-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+  .exp-grand-val{font-size:18px;font-weight:900}
+
+  /* Placeholder vuoto */
+  .exp-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#cbd5e1;padding:40px}
+  .exp-empty-icon{font-size:48px}
+  .exp-empty-label{font-size:12px;font-weight:700;color:#94a3b8;text-align:center}
+
+  /* ── Sezione costi extra e oneri ── */
+  .exp-extra-section{padding:8px 12px;background:#fffbeb;border-bottom:1px solid #fde68a;display:flex;flex-direction:column;gap:6px}
+  .exp-extra-title{font-size:9px;font-weight:800;text-transform:uppercase;color:#92400e;letter-spacing:.4px;margin-bottom:2px}
+  .exp-extra-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .exp-extra-chk{width:15px;height:15px;cursor:pointer;accent-color:#d97706}
+  .exp-extra-label{font-size:10px;font-weight:700;color:#78350f;min-width:120px}
+  .exp-extra-val{font-size:10px;font-weight:800;color:#92400e;min-width:80px;text-align:right}
+  .exp-extra-badge{font-size:9px;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:1px 6px;color:#92400e;font-weight:700}
+  .exp-extra-input{padding:3px 7px;border:1px solid #fcd34d;border-radius:5px;font-family:inherit;font-size:11px;font-weight:700;color:#92400e;background:#fffdf0;outline:none;width:100px;text-align:right}
+  .exp-extra-input::-webkit-inner-spin-button,.exp-extra-input::-webkit-outer-spin-button{-webkit-appearance:none}
+  .exp-extra-input{-moz-appearance:textfield}
+  .exp-extra-descr{padding:3px 7px;border:1px solid #fcd34d;border-radius:5px;font-family:inherit;font-size:11px;color:#92400e;background:#fffdf0;outline:none;flex:1;min-width:140px}
+  .exp-oneri-row{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#f0fdf4;border-top:2px solid #86efac}
+  .exp-oneri-label{font-size:10px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:.3px}
+  .exp-oneri-input{padding:4px 8px;border:1.5px solid #86efac;border-radius:5px;font-family:inherit;font-size:13px;font-weight:800;color:#166534;background:#fff;outline:none;width:70px;text-align:center}
+  .exp-oneri-input::-webkit-inner-spin-button,.exp-oneri-input::-webkit-outer-spin-button{-webkit-appearance:none}
+  .exp-oneri-input{-moz-appearance:textfield}
+  .exp-manod-badge{margin-left:6px;font-size:10px;color:#166534;font-weight:700;background:#f0fdf4;border:1px solid #86efac;border-radius:5px;padding:2px 8px;white-space:nowrap}
+  .exp-imponibile-row{display:flex;justify-content:flex-end;gap:16px;align-items:center;padding:5px 12px;background:#f8faff;border-top:1px solid #bfdbfe;font-size:10px;font-weight:800}
+  .exp-imponibile-lbl{color:#64748b}
+  .exp-imponibile-val{color:#1e40af;font-size:13px}
+  .exp-oneri-val{color:#166534;font-size:13px}
+
+  /* ── Modal pulizia slot ── */
+  .clean-modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px}
+  .clean-modal{background:#fff;border-radius:14px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;animation:modalIn .15s ease}
+  .clean-modal-head{padding:14px 18px;background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;font-size:13px;font-weight:800}
+  .clean-modal-body{padding:16px 18px}
+  .clean-modal-sub{font-size:11px;color:#64748b;margin-bottom:12px;font-weight:600}
+  .clean-slot-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .clean-slot-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all .12s}
+  .clean-slot-item:hover{border-color:#bfdbfe;background:#f0f7ff}
+  .clean-slot-item.selected{border-color:#2563eb;background:#eff6ff}
+  .clean-slot-item input[type=checkbox]{width:16px;height:16px;accent-color:#2563eb;cursor:pointer}
+  .clean-slot-num{width:22px;height:22px;border-radius:6px;background:#1e40af;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .clean-slot-info{flex:1;font-size:11px;font-weight:700;color:#1e293b}
+  .clean-slot-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px}
+  .clean-slot-status.loaded{background:#dcfce7;color:#166534}
+  .clean-slot-status.empty{background:#f1f5f9;color:#94a3b8}
+  .clean-modal-foot{display:flex;gap:8px;padding:0 18px 16px}
+  .clean-modal-foot button{flex:1;padding:9px;border:none;border-radius:8px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+  .btn-clean-ok{background:#1e40af;color:#fff}
+  .btn-clean-ok:hover{background:#1d4ed8}
+  .btn-clean-ok:disabled{opacity:.4;cursor:not-allowed}
+  .btn-clean-cancel{background:#e2e8f0;color:#334155}
+  .btn-clean-cancel:hover{background:#cbd5e1}
+  .clean-select-all{font-size:10px;font-weight:700;color:#2563eb;cursor:pointer;text-decoration:underline;margin-bottom:8px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<div class="topbar">
+  <span>📞 0422 162 8998 &nbsp;·&nbsp; <strong>Tesser Antenne</strong> — Import Preventivi Fornitore</span>
+  <span style="font-size:10px;color:#64748b">Carica fino a 5 preventivi PDF o Word · i prezzi si aggiornano in tempo reale &nbsp;·&nbsp; <strong id="app-version" style="color:#0369a1">v8</strong></span>
+</div>
+
+<header class="main">
+  <span class="logo-mark">TESSER ANTENNE</span>
+  <div class="hdr-controls">
+    <input type="text" id="cliente-cfg" class="cliente-cfg" placeholder="Nome Cliente / Progetto…" autocomplete="off">
+    <button class="btn-hdr" onclick="importExport()" title="Apri un export salvato dalla cartella Export Preventivi (puoi cambiare cartella nel selettore)">📂 Import Preventivi</button>
+    <button class="btn-hdr btn-save" onclick="salvaExport(event)" title="Salva l'export nella cartella Export Preventivi · tieni premuto Shift mentre clicchi per cambiare cartella">💾 Salva Export</button>
+    <button class="btn-hdr btn-danger" onclick="pulisciTutto()">🧹 Pulisci tutto</button>
+    <button class="btn-hdr" onclick="generaStampa()">🖨️ Stampa Offerta</button>
+  </div>
+</header>
+
+<div class="two-col-layout" id="two-col-layout">
+
+  <!-- ══ COLONNA A — IMPORT ══ -->
+  <section class="col-sx" id="col-sx">
+    <div class="col-head col-head-a">
+      <div class="col-head-label">
+        <span style="width:18px;height:18px;border-radius:5px;background:#166534;color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center">A</span>
+        Import Preventivi
+      </div>
+      <span class="col-head-badge" id="badge-slot-count">0 / 5 caricati</span>
+    </div>
+    <div class="col-body-scroll" id="preventivi-grid">
+
+
+        <div class="prev-panel" id="prev-panel-1" data-slot="1">
+          <div class="prev-panel-head">
+            <span class="prev-panel-num">1</span>
+            <input class="prev-panel-titolo-edit" type="text" placeholder="es. Impianto Fotovoltaico" data-slot="1">
+            <span class="prev-panel-badge empty" id="prev-badge-1">Nessun PDF</span>
+            <button class="btn-reset-slot" onclick="resetSlotUI(1)" title="Svuota preventivo 1">✕</button>
+          </div>
+          <div class="prev-panel-body" id="prev-body-1">
+            <div class="prev-drop-zone" id="prev-drop-1" data-slot="1">
+              <div class="prev-drop-icon">📄</div>
+              <div class="prev-drop-label">Trascina PDF o Word oppure clicca</div>
+              <input type="file" class="prev-file-input" id="prev-file-1" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="1">
+            </div>
+            <div class="prev-righe-wrap" id="prev-righe-1" style="display:none">
+              <div class="prev-info-bar"><span id="prev-doc-label-1"></span></div>
+              <div id="prev-table-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prev-panel" id="prev-panel-2" data-slot="2">
+          <div class="prev-panel-head">
+            <span class="prev-panel-num">2</span>
+            <input class="prev-panel-titolo-edit" type="text" placeholder="es. Batteria di Accumulo" data-slot="2">
+            <span class="prev-panel-badge empty" id="prev-badge-2">Nessun PDF</span>
+            <button class="btn-reset-slot" onclick="resetSlotUI(2)" title="Svuota preventivo 2">✕</button>
+          </div>
+          <div class="prev-panel-body" id="prev-body-2">
+            <div class="prev-drop-zone" id="prev-drop-2" data-slot="2">
+              <div class="prev-drop-icon">📄</div>
+              <div class="prev-drop-label">Trascina PDF o Word oppure clicca</div>
+              <input type="file" class="prev-file-input" id="prev-file-2" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="2">
+            </div>
+            <div class="prev-righe-wrap" id="prev-righe-2" style="display:none">
+              <div class="prev-info-bar"><span id="prev-doc-label-2"></span></div>
+              <div id="prev-table-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prev-panel" id="prev-panel-3" data-slot="3">
+          <div class="prev-panel-head">
+            <span class="prev-panel-num">3</span>
+            <input class="prev-panel-titolo-edit" type="text" placeholder="es. Pompa di Calore" data-slot="3">
+            <span class="prev-panel-badge empty" id="prev-badge-3">Nessun PDF</span>
+            <button class="btn-reset-slot" onclick="resetSlotUI(3)" title="Svuota preventivo 3">✕</button>
+          </div>
+          <div class="prev-panel-body" id="prev-body-3">
+            <div class="prev-drop-zone" id="prev-drop-3" data-slot="3">
+              <div class="prev-drop-icon">📄</div>
+              <div class="prev-drop-label">Trascina PDF o Word oppure clicca</div>
+              <input type="file" class="prev-file-input" id="prev-file-3" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="3">
+            </div>
+            <div class="prev-righe-wrap" id="prev-righe-3" style="display:none">
+              <div class="prev-info-bar"><span id="prev-doc-label-3"></span></div>
+              <div id="prev-table-3"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prev-panel" id="prev-panel-4" data-slot="4">
+          <div class="prev-panel-head">
+            <span class="prev-panel-num">4</span>
+            <input class="prev-panel-titolo-edit" type="text" placeholder="es. Linea Vita" data-slot="4">
+            <span class="prev-panel-badge empty" id="prev-badge-4">Nessun PDF</span>
+            <button class="btn-reset-slot" onclick="resetSlotUI(4)" title="Svuota preventivo 4">✕</button>
+          </div>
+          <div class="prev-panel-body" id="prev-body-4">
+            <div class="prev-drop-zone" id="prev-drop-4" data-slot="4">
+              <div class="prev-drop-icon">📄</div>
+              <div class="prev-drop-label">Trascina PDF o Word oppure clicca</div>
+              <input type="file" class="prev-file-input" id="prev-file-4" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="4">
+            </div>
+            <div class="prev-righe-wrap" id="prev-righe-4" style="display:none">
+              <div class="prev-info-bar"><span id="prev-doc-label-4"></span></div>
+              <div id="prev-table-4"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prev-panel" id="prev-panel-5" data-slot="5">
+          <div class="prev-panel-head">
+            <span class="prev-panel-num">5</span>
+            <input class="prev-panel-titolo-edit" type="text" placeholder="es. Varie / Extra" data-slot="5">
+            <span class="prev-panel-badge empty" id="prev-badge-5">Nessun PDF</span>
+            <button class="btn-reset-slot" onclick="resetSlotUI(5)" title="Svuota preventivo 5">✕</button>
+          </div>
+          <div class="prev-panel-body" id="prev-body-5">
+            <div class="prev-drop-zone" id="prev-drop-5" data-slot="5">
+              <div class="prev-drop-icon">📄</div>
+              <div class="prev-drop-label">Trascina PDF o Word oppure clicca</div>
+              <input type="file" class="prev-file-input" id="prev-file-5" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="5">
+            </div>
+            <div class="prev-righe-wrap" id="prev-righe-5" style="display:none">
+              <div class="prev-info-bar"><span id="prev-doc-label-5"></span></div>
+              <div id="prev-table-5"></div>
+            </div>
+          </div>
+        </div>
+  
+    </div>
+  </section>
+
+  <!-- ══ SPLITTER ══ -->
+  <div class="col-splitter" id="col-splitter"></div>
+
+  <!-- ══ COLONNA B — EXPORT ══ -->
+  <section class="col-dx" id="col-dx">
+    <div class="col-head col-head-b">
+      <div class="col-head-label">
+        <span style="width:18px;height:18px;border-radius:5px;background:#1e40af;color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center">B</span>
+        Export — Computo Metrico
+      </div>
+    </div>
+    <div class="exp-shell" id="exp-shell">
+
+      <!-- Barra totale generale -->
+      <div class="exp-params-global" id="exp-params-global">
+        <span style="font-size:10px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:.4px">Computo Metrico</span>
+        <div class="exp-tot-badge" id="exp-grand-badge" style="margin-left:auto">Totale: —</div>
+      </div>
+
+      <!-- Corpo scrollabile -->
+      <div class="exp-body" id="exp-body">
+        <div class="exp-empty" id="exp-empty">
+          <div class="exp-empty-icon">📋</div>
+          <div class="exp-empty-label">Carica almeno un PDF nella colonna Import<br>per generare il computo metrico</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div><!-- /main-wrap -->
+</div><!-- /app-shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+  /* ══════════════════════════════════════════════════════════
+     STATO
+  ══════════════════════════════════════════════════════════ */
+  const SLOTS={};
+  const EMPTY_SLOT = () => ({raw:null,items:[],prevNum:'',fileName:'',cfg:{},colLabels:{}});
+  for(let i=1;i<=5;i++) SLOTS[i]=EMPTY_SLOT();
+
+  /* ══════════════════════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════════════════════ */
+  function eurFmt(n){ return (+n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+  function numFmt(n){ return (+n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function escH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function getGlobalVal(id,def){ const el=document.getElementById(id); if(!el) return def; const n=parseFloat(el.value.trim().replace(',','.')); return isNaN(n)?def:n; }
+
+
+
+  /* ══════════════════════════════════════════════════════════
+     RESET SLOT SINGOLO
+  ══════════════════════════════════════════════════════════ */
+  /* Pulisce un singolo slot: import + stato export */
+  function resetSlot(n){
+    SLOTS[n] = EMPTY_SLOT();
+    delete _expRicRow[n];
+    delete _expParams[n];
+    // Ripristina drop zone
+    const dz = document.getElementById('prev-drop-'+n);
+    dz.style.background = '';
+    dz.innerHTML = '<div class="prev-drop-icon">📄</div>'
+      + '<div class="prev-drop-label">Trascina PDF o Word oppure clicca</div>'
+      + '<input type="file" class="prev-file-input" id="prev-file-'+n
+      + '" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="'+n+'">';
+    document.getElementById('prev-righe-'+n).style.display = 'none';
+    document.getElementById('prev-table-'+n).innerHTML = '';
+    const badge = document.getElementById('prev-badge-'+n);
+    badge.textContent = 'Nessun PDF';
+    badge.className = 'prev-panel-badge empty';
+    badge.style = '';
+  }
+
+  /* Mostra modal di selezione slot da pulire */
+  function pulisciTutto(){
+    // Rimuovi modal precedente se esiste
+    const prev = document.getElementById('clean-modal-ov');
+    if(prev) prev.remove();
+
+    const ov = document.createElement('div');
+    ov.className = 'clean-modal-ov';
+    ov.id = 'clean-modal-ov';
+
+    const titles = [
+      'ES. IMPIANTO FOTOVOLTAICO','ES. BATTERIA DI ACCUMULO',
+      'ES. POMPA DI CALORE','ES. LINEA VITA','ES. VARIE / EXTRA'
+    ];
+
+    const slotItems = [1,2,3,4,5].map(n=>{
+      const titleEl = document.querySelector(`.prev-panel-titolo-edit[data-slot="${n}"]`);
+      const title   = (titleEl&&titleEl.value.trim()) || titles[n-1];
+      const hasData = SLOTS[n]&&SLOTS[n].items&&SLOTS[n].items.length>0;
+      const prevNum = (SLOTS[n]&&SLOTS[n].prevNum) ? ' · N. '+SLOTS[n].prevNum : '';
+      return `<label class="clean-slot-item${hasData?' selected':''}">
+        <input type="checkbox" class="clean-chk" data-slot="${n}" ${hasData?'checked':''}>
+        <span class="clean-slot-num">${n}</span>
+        <span class="clean-slot-info">${escH(title)}${escH(prevNum)}</span>
+        <span class="clean-slot-status ${hasData?'loaded':'empty'}">${hasData?'caricato':'vuoto'}</span>
+      </label>`;
+    }).join('');
+
+    ov.innerHTML = `<div class="clean-modal">
+      <div class="clean-modal-head">🧹 Pulisci preventivi</div>
+      <div class="clean-modal-body">
+        <div class="clean-modal-sub">Seleziona quali preventivi svuotare (import + export):</div>
+        <span class="clean-select-all" onclick="cleanSelectAll(true)">Seleziona tutti</span>
+        &nbsp;·&nbsp;
+        <span class="clean-select-all" onclick="cleanSelectAll(false)">Deseleziona tutti</span>
+        <div class="clean-slot-list">${slotItems}</div>
+      </div>
+      <div class="clean-modal-foot">
+        <button class="btn-clean-cancel" onclick="document.getElementById('clean-modal-ov').remove()">Annulla</button>
+        <button class="btn-clean-ok" onclick="eseguiPulizia()">🧹 Pulisci selezionati</button>
+      </div>
+    </div>`;
+
+    // Chiudi cliccando fuori
+    ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+
+    // Aggiorna stile card al cambio checkbox
+    ov.querySelectorAll('.clean-chk').forEach(chk=>{
+      chk.addEventListener('change', e=>{
+        e.target.closest('.clean-slot-item').classList.toggle('selected', e.target.checked);
+      });
+    });
+
+    document.body.appendChild(ov);
+  }
+
+  function cleanSelectAll(val){
+    document.querySelectorAll('.clean-chk').forEach(chk=>{
+      chk.checked = val;
+      chk.closest('.clean-slot-item').classList.toggle('selected', val);
+    });
+  }
+
+  function eseguiPulizia(){
+    const chks = document.querySelectorAll('.clean-chk:checked');
+    if(!chks.length){ alert('Seleziona almeno un preventivo.'); return; }
+    // Pulisce tutti gli slot selezionati
+    chks.forEach(chk => resetSlot(+chk.dataset.slot));
+    // Chiudi modal
+    const ov = document.getElementById('clean-modal-ov');
+    if(ov) ov.remove();
+    // Aggiorna badge contatore UNA VOLTA
+    const loaded = Object.values(SLOTS).filter(s=>s.items&&s.items.length).length;
+    const bc = document.getElementById('badge-slot-count');
+    if(bc) bc.textContent = loaded + ' / 5 caricati';
+    // Ridisegna colonna export UNA VOLTA con stato finale
+    renderExport();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     PARSING + CARICA PDF (codice originale preservato)
+  ══════════════════════════════════════════════════════════ */
+  function parseNum(str){
+    if(str==null) return null; let s=String(str).trim(); if(!/[0-9]/.test(s)) return null;
+    s=s.replace(/[^0-9.,-]/g,''); if(s==='') return null;
+    if(s.indexOf(',')>-1){ s=s.replace(/\./g,'').replace(',','.'); } else if((s.match(/\./g)||[]).length>1){ s=s.replace(/\./g,''); }
+    const n=parseFloat(s); return isNaN(n)?null:n;
+  }
+  const UM_RE=/^(PZ|NR|N|ML|MT|MQ|MC|LT|KG|GR|CT|H|HR|ORE|ROT|SET|KIT|UN|ME|CM|MM|M|CONF|PA|PZ\.)$/i;
+  function isUM(s){ return UM_RE.test(String(s).trim()); }
+  function joinDescr(prev,next,flush){ if(!prev) return next; if(!next) return prev; const a=prev.slice(-1), b=next.slice(0,1); if(flush && /[A-Za-zÀ-ÿ0-9]/.test(a) && /[a-zà-ÿ]/.test(b)) return prev+next; return prev+' '+next; }
+  
+  function clusterLines(items, yTol){ yTol=yTol||3; const its=items.slice().filter(it=>String(it.str).trim()!=='').sort((a,b)=>b.y-a.y); const lines=[]; its.forEach(it=>{ let ln=lines.find(L=>Math.abs(L.y-it.y)<=yTol); if(!ln){ ln={y:it.y, items:[]}; lines.push(ln); } ln.items.push(it); ln.y=(ln.y*(ln.items.length-1)+it.y)/ln.items.length; }); lines.forEach(L=>L.items.sort((a,b)=>a.x-b.x)); lines.sort((a,b)=>b.y-a.y); return lines; }
+  
+
+  /* ══════════════════════════════════════════════════════════
+     DATABASE HEADER APPRESI  (localStorage)
+     Struttura: { "Cod Articolo|Descrizione": {codex, descrx, ...}, ... }
+  ══════════════════════════════════════════════════════════ */
+  const HEADER_DB_KEY = 'tesser_header_db_v1';
+
+  function headerDbLoad(){
+    try{ return JSON.parse(localStorage.getItem(HEADER_DB_KEY)||'{}'); }catch(e){ return {}; }
+  }
+  function headerDbSave(db){
+    try{ localStorage.setItem(HEADER_DB_KEY, JSON.stringify(db)); }catch(e){}
+  }
+  function headerDbKey(lineTxt){
+    // chiave = parole significative della riga header, normalizzate
+    return lineTxt.trim().replace(/\s+/g,' ').toLowerCase().slice(0,120);
+  }
+
+  /* Conta le regole nel DB */
+  function headerDbCount(){ return Object.keys(headerDbLoad()).length; }
+
+  /* Cerca nel DB una riga header compatibile con quelle del documento.
+     Ritorna {hIdx, mapping} oppure null. */
+  function headerDbMatch(lines){
+    const db = headerDbLoad();
+    for(let i=0;i<lines.length;i++){
+      const t = lines[i].items.map(x=>x.str).join(' ');
+      const k = headerDbKey(t);
+      if(db[k]) return {hIdx:i, mapping:db[k], lineTxt:t};
+    }
+    return null;
+  }
+
+  /* Salva una nuova regola: dato il testo della riga header e il mapping colonne */
+  function headerDbLearn(lineTxt, colsMapping){
+    const db = headerDbLoad();
+    db[headerDbKey(lineTxt)] = colsMapping;
+    headerDbSave(db);
+  }
+
+  /* Versione estesa di detectColumns che accetta anche mapping personalizzati */
+  function detectColumnsFromLine(lines, hIdx){
+    const hy=lines[hIdx].y, hPage=lines[hIdx]._page;
+    let toks=[];
+    lines.forEach(L=>{ if(L._page===hPage && Math.abs(L.y-hy)<=8) L.items.forEach(it=>toks.push(it)); });
+    toks.sort((a,b)=>a.x-b.x);
+    const cols={};
+    for(let i=0;i<toks.length;i++){
+      const it=toks[i]; const s=String(it.str).trim();
+      if(s==='') continue;
+      if(/^Cod/i.test(s)&&cols.code==null)         { cols.code=it.x;  cols.codeLabel=s; }
+      else if(/Descri|Articol|Prodot/i.test(s)&&cols.descr==null){ cols.descr=it.x; cols.descrLabel=s; }
+      else if(/Um\s*Quant/i.test(s))                { cols.um=it.x; cols.qty=it.x+34; cols.umLabel='Um'; cols.qtyLabel='Qtà'; }
+      else if(/^Um$|^U\.M\./i.test(s)&&cols.um==null){ cols.um=it.x; cols.umLabel=s; }
+      else if(/Quant/i.test(s)&&cols.qty==null)     { cols.qty=it.x;  cols.qtyLabel=s; }
+      else if(/Imponib/i.test(s)&&cols.imp==null)   { cols.imp=it.x;  cols.impLabel=s; }
+      else if(/C\.?\s*Iva|Iva/i.test(s)&&cols.civa==null){ cols.civa=it.x; cols.civaLabel=s; }
+      else if(/Consegna/i.test(s)&&cols.consegna==null){ cols.consegna=it.x; cols.consegnaLabel=s; }
+      else if(/Prezzo|Scontat|Netto|Unitario|Importo/i.test(s)&&cols.price==null){ cols.price=it.x; cols.priceLabel=s; }
+    }
+    return (cols.code!=null || cols.descr!=null) ? cols : null;
+  }
+
+  /* Versione di detectColumns estesa: prima cerca nel DB appresi, poi usa regex standard */
+  function detectColumnsSmart(lines){
+    // 1. cerca nel DB appresi
+    const match = headerDbMatch(lines);
+    if(match){
+      const cols = detectColumnsFromLine(lines, match.hIdx);
+      if(cols){ cols._learnedFrom = match.lineTxt; return cols; }
+    }
+    // 2. regex standard (Codice + Descriz)
+    for(let i=0;i<lines.length;i++){
+      const t=lines[i].items.map(x=>x.str).join(' ');
+      if(/Codice/i.test(t) && /Descriz/i.test(t)){
+        return detectColumnsFromLine(lines, i);
+      }
+    }
+    return null;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     UI APPRENDIMENTO HEADER
+     Mostra tutte le righe del PDF e lascia l'utente scegliere
+  ══════════════════════════════════════════════════════════ */
+
+  /* ══════════════════════════════════════════════════════════
+     CAMPI INTERNI — etichette e ordine canonico
+  ══════════════════════════════════════════════════════════ */
+  const FIELD_OPTS = [
+    {v:'code',    l:'Codice articolo'},
+    {v:'descr',   l:'Descrizione'},
+    {v:'um',      l:'Unità misura (UM)'},
+    {v:'qty',     l:'Quantità'},
+    {v:'price',   l:'Prezzo Unit.'},
+    {v:'imp',     l:'Prezzo'},
+    {v:'civa',    l:'IVA / Aliquota'},
+    {v:'consegna',l:'Consegna'},
+    {v:'skip',    l:'— Ignora questa colonna —'}
+  ];
+
+  /* Euristica: dato il testo di una cella header, restituisce il campo interno più probabile */
+  function guessField(headerTxt){
+    const t = headerTxt.toUpperCase().trim();
+    if(/^COD|ARTIC|REF|SKU/.test(t))              return 'code';
+    if(/DESCRI|DENO|PRODOT|ARTICOLO$/.test(t))    return 'descr';
+    if(/^UM$|^U\.M|UNITA|MISURA/.test(t))         return 'um';
+    if(/Q\.?T[AÀ]|QUANT/.test(t))                 return 'qty';
+    if(/PR\.?\s*UN|UNIT|SCON|NETTO/.test(t))      return 'price';
+    if(/IMPON|TOTALE|PREZZO$|IMPORTO/.test(t))    return 'imp';
+    if(/IVA|ALIQ|C\.IVA/.test(t))                 return 'civa';
+    if(/CONSEGNA|DATA/.test(t))                   return 'consegna';
+    return 'skip';
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     FASE 1 — Selezione riga header
+  ══════════════════════════════════════════════════════════ */
+  function mostraApprendimentoHeader(n, allLines){
+    document.getElementById('prev-righe-'+n).style.display = 'block';
+    const tbl = document.getElementById('prev-table-'+n);
+
+    const righe = allLines
+      .filter(L => L.items.some(it=>String(it.str).trim().length>1))
+      .slice(0, 60);
+
+    const dbCount = headerDbCount();
+    const righeHtml = righe.map((L,i)=>{
+      const txt = L.items.map(it=>it.str).join(' ').trim();
+      return `<div class="learn-line" data-li="${i}" onclick="selezionaHeaderLine(this,${n})">
+        <span class="learn-line-num">${i+1}</span>
+        <span class="learn-line-txt">${escH(txt)}</span>
+      </div>`;
+    }).join('');
+
+    tbl.innerHTML = `<div class="learn-wrap">
+      <div class="learn-title">
+        🎓 Fase 1 / 2 — Seleziona la riga di intestazione
+        ${dbCount>0?`<span class="learn-db-badge">${dbCount} regol${dbCount===1?'a':'e'} memorizzat${dbCount===1?'a':'e'}</span>`:''}
+      </div>
+      <div class="learn-subtitle">Clicca la riga che contiene le intestazioni delle colonne (es. ARTICOLO, DESCRIZIONE, Q.TÀ, PREZZO…). Il sistema mostrerà poi una maschera di conferma.</div>
+      <div class="learn-lines" id="learn-lines-${n}">${righeHtml}</div>
+      <div class="learn-actions">
+        <button class="btn-learn-ok" id="btn-learn-ok-${n}" disabled onclick="confermaNuovoHeader(${n})">Avanti: associa colonne →</button>
+        <button class="btn-learn-skip" onclick="annullaApprendimento(${n})">✕ Annulla</button>
+      </div>
+    </div>`;
+
+    SLOTS[n]._learnLines = righe;
+    SLOTS[n]._selectedLearnIdx = -1;
+  }
+
+  window.selezionaHeaderLine = function(el, n){
+    document.querySelectorAll(`#learn-lines-${n} .learn-line`).forEach(r=>r.classList.remove('learn-selected'));
+    el.classList.add('learn-selected');
+    SLOTS[n]._selectedLearnIdx = +el.dataset.li;
+    document.getElementById('btn-learn-ok-'+n).disabled = false;
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     FASE 1→2 — Conferma header e mostra maschera mappatura
+  ══════════════════════════════════════════════════════════ */
+  window.confermaNuovoHeader = function(n){
+    const S = SLOTS[n];
+    const idx = S._selectedLearnIdx;
+    if(idx < 0 || !S._learnLines) return;
+
+    const allLinesOrig = S._allLines;
+    const hLine = S._learnLines[idx];
+
+    // Trova l'indice reale in allLinesOrig
+    let realIdx = -1;
+    for(let i=0;i<allLinesOrig.length;i++){
+      if(allLinesOrig[i].y===hLine.y && allLinesOrig[i]._page===hLine._page){ realIdx=i; break; }
+    }
+    if(realIdx < 0) realIdx = 0;
+    S._headerRealIdx = realIdx;
+
+    // Estrai le celle dell'header con posizioni x
+    const hy = allLinesOrig[realIdx].y, hPage = allLinesOrig[realIdx]._page;
+    let hToks = [];
+    allLinesOrig.forEach(L=>{
+      if(L._page===hPage && Math.abs(L.y-hy)<=8)
+        L.items.forEach(it=>{ if(String(it.str).trim()) hToks.push({str:it.str.trim(), x:it.x}); });
+    });
+    hToks.sort((a,b)=>a.x-b.x);
+    S._hToks = hToks;
+
+    // Trova la PRIMA riga prodotto dopo l'header (per la preview di validazione)
+    let firstRow = null;
+    let pastHeader = false;
+    for(const L of allLinesOrig){
+      if(!pastHeader){
+        if(L.y===hy && L._page===hPage) pastHeader=true;
+        continue;
+      }
+      if(L.y===hy) continue;
+      const items = L.items.filter(it=>String(it.str).trim().length>0);
+      if(items.length >= 2){ firstRow = L; break; }
+    }
+    S._firstRowLine = firstRow;
+
+    mostraMascheraMapping(n, hToks, firstRow, allLinesOrig);
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     FASE 2 — Maschera di mappatura colonne
+  ══════════════════════════════════════════════════════════ */
+  function mostraMascheraMapping(n, hToks, firstRow, allLines){
+    const tbl = document.getElementById('prev-table-'+n);
+
+    // Calcola range x per ogni colonna header
+    const ranges = [];
+    for(let i=0;i<hToks.length;i++){
+      const xStart = i===0 ? -Infinity : hToks[i].x - 2;
+      const xEnd   = i===hToks.length-1 ? Infinity : hToks[i+1].x - 2;
+      ranges.push({label:hToks[i].str, xStart, xEnd});
+    }
+
+    // Per ogni colonna: restituisce i token (con posizioni x) della prima riga
+    function getFirstRowToks(xStart, xEnd){
+      if(!firstRow) return [];
+      return firstRow.items
+        .filter(it=>it.x>=xStart && it.x<xEnd && String(it.str).trim())
+        .sort((a,b)=>a.x-b.x)
+        .map(it=>({str:it.str.trim(), x:it.x}));
+    }
+    function getFirstRowVal(xStart, xEnd){
+      return getFirstRowToks(xStart,xEnd).map(t=>t.str).join(' ') || '—';
+    }
+
+    // splitIdx[colIdx] = indice dell'ultimo token che fa parte del CODICE (per le celle miste)
+    // -1 = nessuno split (tutta la cella va al campo mappato)
+    // Inizializza a -1 per tutte le colonne
+    const splitState = {};
+
+    const righeMap = ranges.map((r,i)=>{
+      const toks  = getFirstRowToks(r.xStart, r.xEnd);
+      const val   = toks.map(t=>t.str).join(' ') || '—';
+      const guess = guessField(r.label);
+      const isAuto= guess !== 'skip';
+      const badge = isAuto
+        ? `<span class="map-field-badge auto">auto</span>`
+        : `<span class="map-field-badge manual">scegli</span>`;
+      const selectOpts = FIELD_OPTS.map(o=>
+        `<option value="${o.v}"${o.v===guess?' selected':''}>${o.l}</option>`
+      ).join('');
+
+      // Se la cella ha più di 1 token E il campo è "code" → mostra lo splitter
+      // (situazione: codice + inizio descrizione attaccati nella stessa zona x)
+      const showSplit = guess==='code' && toks.length > 1;
+
+      let valCell = '';
+      if(showSplit){
+        // Inizializza lo split: il primo token è il codice, gli altri sono descrizione sbordante
+        splitState[i] = 0; // idx dell'ultimo token CODE (0 = solo il primo)
+        const tokHtml = toks.map((t,ti)=>{
+          const cls = ti===0 ? 'tok-code' : 'tok-descr-muted';
+          return `<span class="split-token ${cls}" data-col="${i}" data-ti="${ti}" onclick="clickSplitToken(this,${n})">${escH(t.str)}</span>`;
+        }).join('<span class="split-arrow">›</span>');
+        valCell = `<div class="split-tokens" id="split-tokens-${n}-${i}">${tokHtml}</div>
+          <div class="split-hint">🟢 verde = codice · 🔴 rosso = descrizione · clicca la PRIMA parola della descrizione: da lì in poi (e le righe che proseguono sotto) finisce nel campo Descrizione</div>
+          <input type="hidden" id="split-idx-${n}-${i}" value="0">`;
+      } else {
+        const isLong = val.length > 60;
+        valCell = `<span class="map-col-value${isLong?' long':''}" title="${escH(val)}">${escH(val)}</span>`;
+      }
+
+      return `<tr>
+        <td><span class="map-col-header">${escH(r.label)}</span>${badge}</td>
+        <td>${valCell}</td>
+        <td><select class="map-select${isAuto?' mapped-ok':' mapped-skip'}" data-col="${i}" data-slot="${n}" onchange="onMapSelectChange(this);updateMapPreview(${n})">${selectOpts}</select></td>
+      </tr>`;
+    }).join('');
+
+    // Salva i token della prima riga per ogni colonna in SLOTS per usarli in confermaMappatura
+    SLOTS[n]._firstRowToks = ranges.map(r=>getFirstRowToks(r.xStart, r.xEnd));
+    // testo che prosegue su più righe sotto la prima riga (per anteprima descrizione completa)
+    SLOTS[n]._firstItemCont = firstItemContinuation(allLines, firstRow);
+
+    tbl.innerHTML = `<div class="map-wrap">
+      <div class="map-title">🔗 Fase 2 / 2 — Associa le colonne del PDF ai campi di import</div>
+      <div class="map-subtitle">
+        A sinistra le intestazioni trovate nel PDF · Al centro il valore della prima riga · A destra il campo di destinazione.<br>
+        Il sistema ha pre-compilato in automatico le associazioni <span class="map-field-badge auto" style="font-size:9px">auto</span> — verifica e correggi se necessario.<br>
+        Se nella cella ARTICOLO vedi codice + testo attaccati, clicca il token che separa codice da descrizione.
+      </div>
+      <table class="map-table">
+        <thead><tr><th>Colonna PDF</th><th>Prima riga (esempio)</th><th>Campo di import</th></tr></thead>
+        <tbody>${righeMap}</tbody>
+      </table>
+      <div class="map-preview" id="map-preview-${n}"></div>
+      <div class="map-actions">
+        <button class="btn-map-back" onclick="tornaFase1(${n})">← Torna all'header</button>
+        <button class="btn-map-ok" onclick="confermaMappatura(${n})">✓ Conferma e importa</button>
+      </div>
+    </div>`;
+
+    updateMapPreview(n);
+  }
+
+  /* Ricostruisce il testo che prosegue su più righe SOTTO la prima riga prodotto
+     (righe senza codice articolo e senza dati numerici), così l'anteprima mostra
+     l'intera descrizione che verrà importata. */
+  function firstItemContinuation(allLines, firstRow){
+    if(!firstRow || !allLines) return '';
+    let idx = allLines.indexOf(firstRow);
+    if(idx<0) idx = allLines.findIndex(L=>L.y===firstRow.y && L._page===firstRow._page);
+    if(idx<0) return '';
+    const parts=[];
+    for(let i=idx+1;i<allLines.length;i++){
+      const items=allLines[i].items.filter(it=>String(it.str).trim());
+      if(!items.length) continue;
+      const lineTxt=items.map(it=>it.str).join(' ').trim();
+      if(/Totale\s+Netto|Tot\.?\s*documento|Validit[\u00e0a']|Modalit[\u00e0a']|CONDIZIONI|Scadenze|Timbro/i.test(lineTxt)) break;
+      if(isCodeLike(String(items[0].str).trim())) break;   // nuova riga articolo -> stop
+      parts.push(lineTxt);
+      if(parts.length>=15) break;                          // sicurezza
+    }
+    return parts.join(' ').trim();
+  }
+
+  /* Aggiorna l'anteprima "come verrà importato il primo articolo":
+     mostra Codice e Descrizione COMPLETA (overflow prima riga + colonna descr + righe successive),
+     aggiornandosi in tempo reale quando si cambia il punto di taglio o la mappatura. */
+  window.updateMapPreview = function(n){
+    const S=SLOTS[n]; if(!S) return;
+    const box=document.getElementById('map-preview-'+n);
+    if(!box) return;
+    const firstRowToks=S._firstRowToks||[];
+    const tbl=document.getElementById('prev-table-'+n);
+    let codeColIdx=-1, descrColIdx=-1;
+    if(tbl) tbl.querySelectorAll('.map-select').forEach(sel=>{
+      if(sel.value==='code'  && codeColIdx<0)  codeColIdx=+sel.dataset.col;
+      if(sel.value==='descr' && descrColIdx<0) descrColIdx=+sel.dataset.col;
+    });
+    let codeTxt='', overflow='';
+    if(codeColIdx>=0){
+      const toks=firstRowToks[codeColIdx]||[];
+      const si=document.getElementById('split-idx-'+n+'-'+codeColIdx);
+      const cut = si ? +si.value : (toks.length-1);
+      codeTxt  = toks.slice(0,cut+1).map(t=>t.str).join(' ').trim();
+      overflow = toks.slice(cut+1).map(t=>t.str).join(' ').trim();
+    }
+    const descrCol = descrColIdx>=0 ? (firstRowToks[descrColIdx]||[]).map(t=>t.str).join(' ').trim() : '';
+    const cont = S._firstItemCont||'';
+    const descrFull=[overflow, descrCol, cont].filter(Boolean).join(' ').trim();
+    box.innerHTML =
+      '<div class="map-preview-h">\ud83d\udc41\ufe0f Anteprima primo articolo \u2014 come verr\u00e0 importato</div>'
+      + '<div class="map-preview-row"><span class="map-preview-lbl">Codice</span>'
+      + '<span class="map-preview-code">'+(escH(codeTxt)||'\u2014')+'</span></div>'
+      + '<div class="map-preview-row"><span class="map-preview-lbl">Descrizione</span>'
+      + '<span class="map-preview-descr">'+(escH(descrFull)||'\u2014')+'</span></div>'
+      + (cont ? '<div class="map-preview-note">\u2139\ufe0f Il testo che prosegue su pi\u00f9 righe viene unito automaticamente nella descrizione \u2014 non serve trascinarlo.</div>' : '');
+  };
+
+  /* Gestisce il click su un token dello splitter: tutto fino al token cliccato = CODE,
+     tutto dopo = DESCRIZIONE che sborda */
+  window.clickSplitToken = function(el, n){
+    const colIdx = +el.dataset.col;
+    const ti     = +el.dataset.ti;
+    // Salva il nuovo punto di taglio
+    const hiddenInput = document.getElementById(`split-idx-${n}-${colIdx}`);
+    if(hiddenInput) hiddenInput.value = ti;
+    // Aggiorna i colori dei token
+    const container = document.getElementById(`split-tokens-${n}-${colIdx}`);
+    if(!container) return;
+    container.querySelectorAll('.split-token').forEach(tok=>{
+      const toki = +tok.dataset.ti;
+      tok.className = 'split-token ' + (toki<=ti ? 'tok-code' : 'tok-descr');
+    });
+    updateMapPreview(n);
+  };
+
+  window.onMapSelectChange = function(sel){
+    sel.className = 'map-select ' + (sel.value==='skip' ? 'mapped-skip' : 'mapped-ok');
+  };
+
+  window.tornaFase1 = function(n){
+    mostraApprendimentoHeader(n, SLOTS[n]._allLines);
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     FASE 2 → IMPORT — Conferma mappatura, costruisce cols e importa
+  ══════════════════════════════════════════════════════════ */
+  window.confermaMappatura = function(n){
+    const S = SLOTS[n];
+    const allLines = S._allLines;
+    const hToks = S._hToks;
+    const realIdx = S._headerRealIdx;
+
+    // Leggi le selezioni dalla maschera
+    const selects = document.querySelectorAll(`#prev-table-${n} .map-select`);
+    if(!selects.length){ alert('Errore: maschera non trovata.'); return; }
+
+    // Costruisce cols con le posizioni x dalle celle header
+    const cols = {};
+    const LABEL_MAP = {
+      code:'code', descr:'descr', um:'um', qty:'qty',
+      price:'price', imp:'imp', civa:'civa', consegna:'consegna'
+    };
+    const LABEL_SUFFIX = {
+      code:'codeLabel', descr:'descrLabel', um:'umLabel', qty:'qtyLabel',
+      price:'priceLabel', imp:'impLabel', civa:'civaLabel', consegna:'consegnaLabel'
+    };
+
+    selects.forEach(sel=>{
+      const colIdx = +sel.dataset.col;
+      const field  = sel.value;
+      if(field === 'skip') return;
+      const x = hToks[colIdx].x;
+      const label = hToks[colIdx].str;
+      if(cols[field] == null){
+        cols[field] = x;
+        if(LABEL_SUFFIX[field]) cols[LABEL_SUFFIX[field]] = label;
+      }
+    });
+
+    // Gestisce lo split codice/descrizione: se l'utente ha tagliato la colonna code,
+    // salva il punto di taglio come _codeSplitX in cols
+    // così parsePagesWithHeader può separare codice dal testo sbordante
+    const firstRowToks = S._firstRowToks || [];
+    selects.forEach(sel=>{
+      const colIdx = +sel.dataset.col;
+      if(sel.value !== 'code') return;
+      const splitInput = document.getElementById(`split-idx-${n}-${colIdx}`);
+      if(!splitInput) return;
+      const splitTi = +splitInput.value;
+      const toks = firstRowToks[colIdx] || [];
+      if(toks.length > 1 && splitTi < toks.length-1){
+        // L'utente ha confermato un punto di taglio: il token a splitTi+1 è il primo della descr
+        // Salva la coordinata x di taglio
+        cols._codeSplitX = toks[splitTi+1] ? toks[splitTi+1].x : null;
+      }
+    });
+
+    if(!cols.code && !cols.descr){
+      alert('Associa almeno il campo "Codice articolo" o "Descrizione" prima di procedere.');
+      return;
+    }
+
+    // Salva nel DB con la mappatura completa
+    const lineTxt = allLines[realIdx].items.map(it=>it.str).join(' ');
+    headerDbLearn(lineTxt, cols);
+
+    // Parse con header e mappatura confermata
+    const res = parsePagesWithHeader(S._pages, allLines, realIdx, cols);
+    if(!res || !res.rows || !res.rows.length){
+      alert('Nessuna riga prodotto trovata con questa mappatura.\nVerifica che le righe siano nel formato corretto.');
+      return;
+    }
+
+    applyOriginTotalsFallback(res, S._pages);
+    S.raw = res;
+    S._learnLines = null; S._allLines = null; S._hToks = null;
+
+    importaDiretto(n);
+
+    const dz = document.getElementById('prev-drop-'+n);
+    dz.innerHTML = '<div class="prev-drop-icon">✅</div><div class="prev-drop-label" style="color:#166534">'
+      + escH(S.fileName)
+      + '<br><span style="font-size:9px;color:#16a34a">✓ Mappatura appresa · riusata automaticamente</span></div>';
+  };
+
+  window.annullaApprendimento = function(n){
+    const dz=document.getElementById('prev-drop-'+n);
+    dz.innerHTML='<div class="prev-drop-icon">📄</div><div class="prev-drop-label">Trascina PDF o Word oppure clicca</div><input type="file" class="prev-file-input" id="prev-file-'+n+'" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-slot="'+n+'">';
+    document.getElementById('prev-righe-'+n).style.display='none';
+    document.getElementById('prev-table-'+n).innerHTML='';
+    SLOTS[n]=EMPTY_SLOT();
+  };
+
+  /* Versione di parsePages che usa un hIdx già noto */
+  /*
+   * isCodeLike: restituisce true se il testo sembra un codice articolo
+   * (breve, alfanumerico, senza frasi narrative).
+   * Regola: <= 30 caratteri, nessuno spazio oppure pattern codice (lettere+numeri),
+   * non inizia con minuscola (che indica continuazione di frase).
+   */
+  function isCodeLike(txt){
+    if(!txt) return false;
+    if(txt.length > 30) return false;            // troppo lungo per essere un codice
+    if(/^[a-zàèìòù]/.test(txt)) return false;   // inizia con minuscola → continuazione frase
+    if(/[a-zA-Z0-9]/.test(txt) && txt.trim().split(/\s+/).length <= 3) return true;
+    return false;
+  }
+
+  function parsePagesWithHeader(pages, allLines, hIdx, cols){
+    const ranges = colRanges(cols);
+    const docNum = findDocNum(allLines);
+    const footRe=/Totale\s+Netto|Tot\.?\s*documento|Validit[àa']|Modalit[àa']\s+di\s+pagamento|CONDIZIONI|Scadenze|Timbro|Nel\s+preventivo/i;
+    const hLine  = allLines[hIdx];
+    const rows=[]; let started=false, prevY=null, lastRow=null;
+
+    for(const L of allLines){
+      const txt=L.items.map(i=>i.str).join(' ').trim();
+      if(!started){
+        if(L.y===hLine.y && L._page===hLine._page){ started=true; prevY=L.y; }
+        continue;
+      }
+      if(L.y===hLine.y) continue;
+      if(footRe.test(txt)) break;
+
+      const bucket={code:[],descr:[],um:[],qty:[],price:[],imp:[],civa:[],consegna:[],other:[]};
+      L.items.forEach(it=>{
+        const colName=whichCol(it.x,ranges)||'other';
+        if(bucket[colName]) bucket[colName].push(it);
+      });
+
+      // Se esiste un punto di taglio codice/descrizione, separa i token della colonna code
+      let   codeTxt  = '';
+      let   splitExtra = '';
+      if(cols._codeSplitX != null && bucket.code.length){
+        const beforeSplit = bucket.code.filter(i=>i.x < cols._codeSplitX);
+        const afterSplit  = bucket.code.filter(i=>i.x >= cols._codeSplitX);
+        codeTxt    = beforeSplit.map(i=>i.str).join(' ').trim();
+        splitExtra = afterSplit.map(i=>i.str).join(' ').trim();
+      } else {
+        codeTxt = bucket.code.map(i=>i.str).join(' ').trim();
+      }
+      let   descrTxt = [splitExtra, bucket.descr.map(i=>i.str).join(' ').trim()].filter(Boolean).join(' ').trim();
+      let   qtyVal=null, umTxt=bucket.um.map(i=>i.str).join(' ').trim();
+      bucket.qty.forEach(i=>{ if(isUM(i.str)) umTxt=umTxt||i.str.trim(); else{const nn=parseNum(i.str);if(nn!=null)qtyVal=nn;} });
+      let priceVal=null; bucket.price.forEach(i=>{const nn=parseNum(i.str);if(nn!=null)priceVal=nn;});
+      let impVal=null;   bucket.imp.forEach(i=>{const nn=parseNum(i.str);if(nn!=null)impVal=nn;});
+      let civaTxt    = bucket.civa.map(i=>i.str).join(' ').trim();
+      let consegnaTxt= bucket.consegna.map(i=>i.str).join(' ').trim();
+
+      const gap      = (prevY!=null)?(prevY-L.y):0;
+      // Una riga è un NUOVO ARTICOLO solo se ha un codice vero (breve, alfanumerico)
+      // oppure ha dati numerici (qty/prezzo) insieme a una descrizione non vuota
+      const hasRealCode = isCodeLike(codeTxt);
+      const hasData     = (qtyVal!=null || priceVal!=null || impVal!=null);
+
+      if(hasRealCode || (hasData && descrTxt!=='')){
+        // Nuovo articolo
+        // Se codeTxt non è un codice vero ma la descrizione è presente,
+        // il "codice" va in coda alla descrizione (testo di continuazione finito lì per sbaglio)
+        const finalCode  = hasRealCode ? codeTxt : '';
+        const finalDescr = (!hasRealCode && codeTxt && descrTxt)
+          ? codeTxt + ' ' + descrTxt
+          : descrTxt;
+        rows.push({
+          code:codeTxt, descr:finalDescr, um:umTxt||'',
+          qty:qtyVal, scontato:priceVal, imponibile:impVal,
+          civa:civaTxt, consegna:consegnaTxt, _tipo:'prodotto'
+        });
+        lastRow=rows[rows.length-1]; prevY=L.y;
+      } else {
+        // Nessun codice reale e nessun dato numerico: è continuazione o riga descrittiva
+        const gap = (prevY!=null)?(prevY-L.y):0;
+        // Testo da aggiungere: prendi sia codeTxt (testo sbordato a sx) che descrTxt
+        const contTxt = [codeTxt, descrTxt].filter(Boolean).join(' ').trim();
+        if(contTxt){
+          // Se c'è un lastRow e il gap è ragionevole (riga vicina) → continuazione descrizione
+          if(lastRow && gap >= 0 && gap <= 30){
+            lastRow.descr = lastRow.descr
+              ? lastRow.descr + ' ' + contTxt
+              : contTxt;
+            prevY=L.y;
+          } else {
+            // Riga separata (es. titolo sezione)
+            rows.push({code:'',descr:contTxt,um:'',qty:null,scontato:null,imponibile:null,_tipo:'descr'});
+            prevY=L.y;
+          }
+        }
+      }
+    }
+    const totals=findTotals(allLines);
+    return {docNum, cols, ranges, rows, totals};
+  }
+
+  function detectColumns(lines){ 
+      let hIdx=-1; 
+      for(let i=0;i<lines.length;i++){ 
+          const t=lines[i].items.map(x=>x.str).join(' '); 
+          if(/Codice/i.test(t) && /Descriz/i.test(t)){ hIdx=i; break; } 
+      } 
+      if(hIdx<0) return null; 
+      
+      const hy=lines[hIdx].y, hPage=lines[hIdx]._page; 
+      let toks=[]; 
+      lines.forEach(L=>{ if(L._page===hPage && Math.abs(L.y-hy)<=8) L.items.forEach(it=>toks.push(it)); }); 
+      toks.sort((a,b)=>a.x-b.x); 
+
+      const cols={}; 
+      for(let i=0;i<toks.length;i++){
+        const it=toks[i]; const s=String(it.str).trim();
+        if(s==='') continue;
+        if(/^Codice/i.test(s) && cols.code==null){ cols.code=it.x; cols.codeLabel='Codice'; }
+        else if(/Descriz/i.test(s) && cols.descr==null){ cols.descr=it.x; cols.descrLabel='Descrizione'; }
+        else if(/Um\s*Quantit/i.test(s)){ cols.um=it.x; cols.qty=it.x+34; cols.umLabel='Um'; cols.qtyLabel='Quantità'; }
+        else if(/^Um$/i.test(s) && cols.um==null){ cols.um=it.x; cols.umLabel='Um'; }
+        else if(/Quantit/i.test(s) && cols.qty==null){ cols.qty=it.x; cols.qtyLabel='Quantità'; }
+        else if(/Imponibile/i.test(s) && cols.imp==null){ cols.imp=it.x; cols.impLabel='Imponibile'; }
+        else if(/C\.?\s*Iva/i.test(s) && cols.civa==null){ cols.civa=it.x; cols.civaLabel='C.Iva'; }
+        else if(/Consegna/i.test(s) && cols.consegna==null){ cols.consegna=it.x; cols.consegnaLabel='Consegna'; }
+        else if(/(Prezzo|Scontato|Netto|Unitario)/i.test(s) && cols.price==null){ cols.price=it.x; cols.priceLabel=/Scontato/i.test(s)?'Prezzo Scontato':s; }
+      } 
+      return cols; 
+  }
+
+  function colRanges(cols){ 
+      const order=['code','descr','um','qty','price','imp','civa','consegna'].filter(k=>cols[k]!=null).map(k=>({k, x:cols[k]})); 
+      order.sort((a,b)=>a.x-b.x); 
+      const r={}; 
+      for(let i=0;i<order.length;i++){ 
+          const start=i===0? -1e9 : order[i].x-2; 
+          const end=i===order.length-1? 1e9 : order[i+1].x-2; 
+          r[order[i].k]=[start,end]; 
+      } 
+      return r; 
+  }
+  
+  function whichCol(x, ranges){ for(const k in ranges){ if(x>=ranges[k][0] && x<ranges[k][1]) return k; } return null; }
+  
+  function findDocNum(lines){ for(const L of lines){ const t=L.items.map(i=>i.str).join(' '); let m=t.match(/Preventivo\s+nr\.?\s*([0-9][0-9A-Za-z_\/\-]*)/i) || t.match(/PREVENTIVO\s*(?:nr\.?|n\.?|numero)?\s*([0-9][0-9A-Za-z_\/\-]*)/i); if(m) return m[1]; } return ''; }
+
+  // Estrae la riga totali del documento (etichette note, valori assegnati per vicinanza)
+  function findTotals(lines){
+    let li=-1;
+    for(let i=0;i<lines.length;i++){
+      const t=lines[i].items.map(x=>x.str).join(' ');
+      if(/Totale\s+Netto/i.test(t) && /Residuo/i.test(t)){ li=i; break; }
+    }
+    if(li<0) return findTotalsGeneric(lines);
+    const labLine=lines[li];
+    const ANCH=[
+      {re:/Merce/i,     label:'Totale Netto Merce'},
+      {re:/Trasporto/i, label:'Trasporto'},
+      {re:/Spese/i,     label:'Spese'},
+      {re:/Documento/i, label:'Totale Documento'},
+      {re:/Acconto/i,   label:'Acconto'},
+      {re:/Residuo/i,   label:'Residuo a Pagare'}
+    ];
+    const anchors=[];
+    ANCH.forEach(a=>{ const it=labLine.items.find(t=>a.re.test(String(t.str).trim())); if(it) anchors.push({label:a.label, x:it.x}); });
+    if(!anchors.length) return null;
+    anchors.sort((a,b)=>a.x-b.x);
+    let valLine=null;
+    lines.forEach(L=>{
+      if(L._page!==labLine._page) return;
+      const dy=labLine.y-L.y;
+      if(dy>0 && dy<=16 && L.items.some(i=>parseNum(i.str)!=null)){
+        if(!valLine || (labLine.y-L.y) < (labLine.y-valLine.y)) valLine=L;
+      }
+    });
+    const out=anchors.map(a=>({label:a.label, value:''}));
+    if(valLine){
+      valLine.items.forEach(it=>{
+        if(parseNum(it.str)==null) return;
+        let best=-1,bd=1e9;
+        anchors.forEach((a,ai)=>{ const d=Math.abs(a.x-it.x); if(d<bd){bd=d;best=ai;} });
+        if(best>=0) out[best].value=it.str.trim();
+      });
+    }
+    return out;
+  }
+
+  /* Fallback: cattura etichette/valori di totale anche da documenti non standard */
+  function findTotalsGeneric(lines){
+    const WANT=[
+      {re:/Totale\s*Netto\s*Merce/i, label:'Totale Netto Merce'},
+      {re:/Trasporto/i,                label:'Trasporto'},
+      {re:/Spese/i,                    label:'Spese'},
+      {re:/Totale\s*Imponibile/i,      label:'Totale Imponibile'},
+      {re:/Totale\s*Documento/i,       label:'Totale Documento'},
+      {re:/Totale\s*Ivato/i,           label:'Totale Ivato'},
+      {re:/Totale\s*a\s*Pagare|Residuo/i, label:'Totale a Pagare'},
+      {re:/Totale\b/i,                 label:'Totale Documento'}
+    ];
+    const out=[];
+    for(const L of lines){
+      const txt=L.items.map(i=>i.str).join(' ');
+      if(!/totale|imponibile|trasporto|spese|residuo/i.test(txt)) continue;
+      const nums=L.items.map(i=>String(i.str).trim()).filter(x=>parseNum(x)!=null);
+      if(!nums.length) continue;
+      const w=WANT.find(w=>w.re.test(txt));
+      if(w && !out.some(o=>o.label===w.label)) out.push({label:w.label, value:nums[nums.length-1]});
+    }
+    return out.length?out:null;
+  }
+
+  /* Se il parsing non ha trovato totali, usa quelli estratti dal Word (.docx) */
+  function applyOriginTotalsFallback(res, pages){
+    if(res && (!res.totals || !res.totals.length) && pages && pages._docxTotals && pages._docxTotals.length){
+      res.totals = pages._docxTotals;
+    }
+  }
+
+  function parsePages(pages, opts){
+    opts=opts||{}; const yTol=opts.yTol||3, contTol=opts.contTol||12; let allLines=[];
+    pages.forEach((items,pi)=>{ const lines=clusterLines(items,yTol); lines.forEach(L=>{L._page=pi;}); allLines=allLines.concat(lines); });
+    const cols=detectColumns(allLines); if(!cols) return {error:'header_non_trovato'};
+    const ranges=colRanges(cols), docNum=findDocNum(allLines);
+    const footRe=/Totale\s+Netto|Tot\.?\s*documento|Validit[àa']|Modalit[àa']\s+di\s+pagamento|CONDIZIONI|Scadenze|Timbro|Nel\s+preventivo/i;
+    const dEnd = ranges.descr ? ranges.descr[1] : 1e9;
+    const rows=[]; let started=false, prevY=null, lastRow=null, seenProduct=false;
+    
+    for(const L of allLines){
+      const txt=L.items.map(i=>i.str).join(' ').trim();
+      if(!started){ if(/Codice/i.test(txt)&&/Descriz/i.test(txt)){ started=true; prevY=L.y; } continue; }
+      if(/^Codice\b/i.test(txt)&&/Descriz/i.test(txt)) continue;
+      if(footRe.test(txt)) break;
+      
+      const bucket={code:[],descr:[],um:[],qty:[],price:[],imp:[],civa:[],consegna:[],other:[]};
+      let lineItems=[];
+      L.items.forEach(it=>{
+        const sx=it.x, ex=it.x+(it.w||0);
+        if(cols.descr!=null && sx < cols.descr-2 && ex > cols.descr+15 && /\s/.test(String(it.str)) && (it.w||0)>0){
+          const txt=String(it.str), charW=it.w/Math.max(txt.length,1);
+          let idx=Math.floor((cols.descr - sx)/charW);
+          idx=Math.max(1,Math.min(txt.length-1,idx));
+          lineItems.push({str:txt.slice(0,idx).trim(), x:sx, w:charW*idx});
+          lineItems.push({str:txt.slice(idx).trim(), x:cols.descr, w:ex-cols.descr});
+        } else lineItems.push(it);
+      });
+      lineItems.forEach(it=>{ 
+          const colName = whichCol(it.x,ranges)||'other';
+          if(bucket[colName]) bucket[colName].push(it); 
+      });
+      
+      const codeTxt=bucket.code.map(i=>i.str).join(' ').trim();
+      let descrTxt=bucket.descr.map(i=>i.str).join(' ').trim();
+      const dRightThis = bucket.descr.length ? Math.max.apply(null, bucket.descr.map(i=>i.x+(i.w||0))) : null;
+      let qtyVal=null, umTxt=bucket.um.map(i=>i.str).join(' ').trim();
+      
+      bucket.qty.forEach(i=>{ if(isUM(i.str)) umTxt=umTxt||i.str.trim(); else { const n=parseNum(i.str); if(n!=null) qtyVal=n; } });
+      bucket.other.forEach(i=>{ if(isUM(i.str)&&!umTxt) umTxt=i.str.trim(); });
+      
+      let priceVal=null; bucket.price.forEach(i=>{ const n=parseNum(i.str); if(n!=null) priceVal=n; });
+      let impVal=null;   bucket.imp.forEach(i=>{ const n=parseNum(i.str); if(n!=null) impVal=n; });
+      let civaTxt=bucket.civa.map(i=>i.str).join(' ').trim();
+      let consegnaTxt=bucket.consegna.map(i=>i.str).join(' ').trim();
+      
+      const gap=(prevY!=null)?(prevY-L.y):0;
+      const hasRealCode=isCodeLike(codeTxt), hasData=(qtyVal!=null||priceVal!=null||impVal!=null);
+      
+      if(hasRealCode || (hasData && descrTxt!=='')){
+        rows.push({code:codeTxt,descr:descrTxt,um:umTxt||'',qty:qtyVal,scontato:priceVal,imponibile:impVal,civa:civaTxt,consegna:consegnaTxt,_tipo:'prodotto',_dRight:dRightThis});
+        lastRow=rows[rows.length-1]; prevY=L.y; seenProduct=true;
+      } else {
+        // Continuazione: aggrega sia codeTxt che descrTxt
+        const contTxt = [codeTxt, descrTxt, umTxt].filter(Boolean).join(' ').trim();
+        const cont=lastRow && gap>=0 && gap<=contTol;
+        if(cont && contTxt){ 
+            lastRow.descr = lastRow.descr ? lastRow.descr + ' ' + contTxt : contTxt;
+            if(dRightThis!=null) lastRow._dRight=dRightThis; 
+            prevY=L.y; 
+        } else if(contTxt) { 
+            rows.push({code:'',descr:contTxt,um:'',qty:null,scontato:null,imponibile:null,_tipo:'descr'}); 
+            prevY=L.y; 
+        }
+      }
+    }
+    const totals=findTotals(allLines);
+    return {docNum, cols, ranges, rows, totals};
+  }
+
+
+
+  /* ══════════════════════════════════════════════════════════
+     LISTENER UNICI — event delegation sul documento
+     Un solo handler per click/drag/drop/change su tutte le drop zone
+  ══════════════════════════════════════════════════════════ */
+  document.addEventListener('click', e => {
+    const dz = e.target.closest('.prev-drop-zone');
+    if (!dz) return;
+    const n = dz.id.replace('prev-drop-', '');
+    const fi = document.getElementById('prev-file-' + n);
+    if (fi) fi.click();
+  });
+  document.addEventListener('dragover', e => {
+    if (e.target.closest('.prev-drop-zone')) e.preventDefault();
+  });
+  document.addEventListener('drop', e => {
+    const dz = e.target.closest('.prev-drop-zone');
+    if (!dz) return;
+    e.preventDefault();
+    dz.style.background = '';
+    const n = dz.id.replace('prev-drop-', '');
+    const f = e.dataTransfer.files[0];
+    if (f) caricaFile(+n, f);
+  });
+  document.addEventListener('change', e => {
+    if (!e.target.classList.contains('prev-file-input')) return;
+    const n = e.target.dataset.slot;
+    const f = e.target.files[0];
+    if (f) caricaFile(+n, f);
+    e.target.value = '';
+  });
+  document.addEventListener('dragenter', e => {
+    const dz = e.target.closest('.prev-drop-zone');
+    if (dz) dz.style.background = '#dcfce7';
+  });
+  document.addEventListener('dragleave', e => {
+    const dz = e.target.closest('.prev-drop-zone');
+    if (dz && !dz.contains(e.relatedTarget)) dz.style.background = '';
+  });
+
+  /* ══════════════════════════════════════════════════════════
+     CARICAMENTO FILE — dispatcher PDF / Word (.docx)
+     Entrambi i formati producono la stessa struttura "pages"
+     e attraversano la medesima pipeline (processSlotPages).
+  ══════════════════════════════════════════════════════════ */
+  function caricaFile(n, file){
+    const dz   = document.getElementById('prev-drop-'+n);
+    const name = (file.name||'').toLowerCase();
+    const isWord = file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                || name.endsWith('.docx');
+    const isPdf  = file.type==='application/pdf' || name.endsWith('.pdf');
+    if(isWord)        caricaWord(n, file);
+    else if(isPdf)    caricaPDF(n, file);
+    else if(name.endsWith('.doc') || file.type==='application/msword'){
+      dz.innerHTML='<div class="prev-drop-icon">❌</div><div class="prev-drop-label" style="color:#b91c1c">Formato .doc (vecchio Word) non supportato — salva come .docx o PDF</div>';
+    } else {
+      dz.innerHTML='<div class="prev-drop-icon">❌</div><div class="prev-drop-label" style="color:#b91c1c">Formato non supportato — usa PDF o Word (.docx)</div>';
+    }
+  }
+
+  async function caricaPDF(n,file){
+    const dz=document.getElementById('prev-drop-'+n);
+    dz.innerHTML='<div class="prev-drop-icon">⏳</div><div class="prev-drop-label">Lettura PDF in corso…</div>';
+    try{
+      if(!window.pdfjsLib) throw new Error('Libreria PDF non disponibile.');
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const buf=await file.arrayBuffer(), pdf=await pdfjsLib.getDocument({data:buf}).promise, pages=[];
+      for(let p=1;p<=pdf.numPages;p++){
+        const pg=await pdf.getPage(p), tc=await pg.getTextContent();
+        pages.push(tc.items.map(i=>({str:i.str,x:i.transform[4],y:i.transform[5],w:i.width})));
+      }
+      processSlotPages(n, pages, file.name);
+    }catch(err){
+      dz.innerHTML='<div class="prev-drop-icon">❌</div><div class="prev-drop-label" style="color:#b91c1c">Errore: '+escH(err.message)+'</div>';
+    }
+  }
+
+  /* ── WORD (.docx) ───────────────────────────────────────────
+     Estrae tabelle e paragrafi dal document.xml e li converte
+     in token con coordinate x/y SINTETICHE allineate alla griglia
+     reale della tabella (gestendo le celle unite / gridSpan),
+     così l'intera pipeline PDF (clusterLines, detectColumns,
+     apprendimento header, mappatura, parsing) funziona identica. */
+  async function caricaWord(n,file){
+    const dz=document.getElementById('prev-drop-'+n);
+    dz.innerHTML='<div class="prev-drop-icon">⏳</div><div class="prev-drop-label">Lettura Word in corso…</div>';
+    try{
+      if(!window.JSZip) throw new Error('Libreria Word non disponibile.');
+      const buf=await file.arrayBuffer();
+      const zip=await JSZip.loadAsync(buf);
+      const docFile=zip.file('word/document.xml');
+      if(!docFile) throw new Error('document.xml non trovato nel file Word.');
+      const xml=await docFile.async('string');
+      const xdoc=new DOMParser().parseFromString(xml,'application/xml');
+      if(xdoc.getElementsByTagName('parsererror').length) throw new Error('XML Word non valido.');
+      const pages=docxToPages(xdoc);
+      if(!pages.length || !pages[0].length) throw new Error('Nessun testo estratto dal documento Word.');
+      processSlotPages(n, pages, file.name);
+    }catch(err){
+      dz.innerHTML='<div class="prev-drop-icon">❌</div><div class="prev-drop-label" style="color:#b91c1c">Errore: '+escH(err.message)+'</div>';
+    }
+  }
+
+  /* Testo di un nodo (run/paragrafo/cella) mantenendo i tab come \t */
+  function docxRunText(el){
+    let out='';
+    for(const node of el.childNodes){
+      if(node.nodeType!==1) continue;
+      const ln=node.localName;
+      if(ln==='t')                      out+=(node.textContent||'');
+      else if(ln==='tab')               out+='\t';
+      else if(ln==='br'||ln==='cr')     out+=' ';
+      else                              out+=docxRunText(node);
+    }
+    return out;
+  }
+  /* Figli diretti con un dato localName */
+  function docxChildren(el, local){
+    const r=[];
+    for(const c of el.childNodes){ if(c.nodeType===1 && c.localName===local) r.push(c); }
+    return r;
+  }
+  /* gridSpan di una cella (default 1) */
+  function docxGridSpan(tc){
+    const pr=docxChildren(tc,'tcPr')[0];
+    if(!pr) return 1;
+    const gs=docxChildren(pr,'gridSpan')[0];
+    if(!gs) return 1;
+    const v=parseInt(gs.getAttribute('w:val')||gs.getAttributeNS('*','val')||'1',10);
+    return isNaN(v)||v<1?1:v;
+  }
+
+  /* Converte il DOM del document.xml in pages=[[{str,x,y,w}]] */
+  function docxToPages(xdoc){
+    const COL_W=120;            // distanza x fra colonne sintetiche
+    const items=[];
+    const docxTotals=[];       // totali documento (riga "Totale:" della tabella)
+    let y=100000;              // y decrescente riga per riga
+    let body=xdoc.getElementsByTagName('w:body')[0];
+    if(!body){ const b=xdoc.getElementsByTagNameNS('*','body'); body=b&&b[0]; }
+    if(!body) return [items];
+
+    function pushToken(str,gcol){
+      const t=String(str).replace(/\s+/g,' ').trim();
+      if(!t) return;
+      items.push({str:t, x:10+gcol*COL_W, y:y, w:0});
+    }
+
+    for(const child of body.childNodes){
+      if(child.nodeType!==1) continue;
+      const ln=child.localName;
+
+      if(ln==='tbl'){
+        const rows=docxChildren(child,'tr');
+        for(const tr of rows){
+          const cells=docxChildren(tr,'tc');
+          // pre-estrai testo e gridSpan per gestire le celle unite
+          const cellData=cells.map(tc=>({txt:docxRunText(tc).replace(/\t+/g,' ').replace(/\s+/g,' ').trim(), span:docxGridSpan(tc)}));
+          const nonEmpty=cellData.filter(c=>c.txt);
+          // riga di totale di coda (poche celle, etichetta "Totale"): non è un
+          // prodotto, ma la usiamo per il pannello "Totali documento di origine"
+          const isTotalRow = nonEmpty.length<=2 && nonEmpty.some(c=>/totale/i.test(c.txt));
+          if(isTotalRow){
+            const lblc = nonEmpty.find(c=>/totale|imponibile|residuo|pagare/i.test(c.txt));
+            const valc = nonEmpty.filter(c=>parseNum(c.txt)!=null).pop();
+            if(lblc && valc) docxTotals.push({label:(lblc.txt.replace(/[:\s]+$/,'').replace(/\s+/g,' ').trim()||'Totale Documento'), value:valc.txt});
+            continue;
+          }
+          let gcol=0, any=false;
+          cellData.forEach(c=>{
+            if(c.txt){ pushToken(c.txt,gcol); any=true; }
+            gcol+=c.span;             // avanza sull'indice di griglia reale
+          });
+          if(any) y-=20;
+        }
+      } else if(ln==='p'){
+        const raw=docxRunText(child);
+        if(raw.trim()===''){ continue; }
+        const parts=raw.split(/\t+/);  // colonne tabulate nei preventivi testuali
+        if(parts.length>1){ parts.forEach((p,ci)=>pushToken(p,ci)); }
+        else { pushToken(raw,0); }
+        y-=20;
+      }
+    }
+    const out=[items]; out._docxTotals=docxTotals; return out;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     PIPELINE COMUNE PDF/WORD
+     Dato "pages", esegue detection, apprendimento o import diretto.
+  ══════════════════════════════════════════════════════════ */
+  function processSlotPages(n, pages, fileName){
+    const dz=document.getElementById('prev-drop-'+n);
+    SLOTS[n]._pages=pages;
+
+    const allLines=[];
+    pages.forEach((its,pi)=>{
+      const lines=clusterLines(its,3);
+      lines.forEach(L=>{L._page=pi;});
+      allLines.push(...lines);
+    });
+    SLOTS[n]._allLines=allLines;
+
+    const colsSmart=detectColumnsSmart(allLines);
+
+    if(!colsSmart){
+      SLOTS[n].fileName=fileName;
+      const badge=document.getElementById('prev-badge-'+n);
+      badge.textContent='Impara header'; badge.classList.remove('empty');
+      badge.style.background='#fef9c3'; badge.style.color='#92400e'; badge.style.borderColor='#fcd34d';
+      dz.innerHTML='<div class="prev-drop-icon">🎓</div><div class="prev-drop-label" style="color:#92400e">Header non trovato — seleziona la riga intestazione</div>';
+      mostraApprendimentoHeader(n, allLines);
+      return;
+    }
+
+    const res=parsePages(pages,{contTol:12});
+    if(res.error || !res.rows || !res.rows.length){
+      SLOTS[n].fileName=fileName;
+      dz.innerHTML='<div class="prev-drop-icon">🎓</div><div class="prev-drop-label" style="color:#92400e">Nessuna riga dati — seleziona l&#39;header manualmente</div>';
+      mostraApprendimentoHeader(n, allLines);
+      return;
+    }
+
+    applyOriginTotalsFallback(res, pages);
+    SLOTS[n].raw=res; SLOTS[n].fileName=fileName; SLOTS[n].prevNum=res.docNum||'';
+    if(colsSmart._learnedFrom){
+      dz.innerHTML='<div class="prev-drop-icon">✅</div><div class="prev-drop-label" style="color:#166534">'+escH(fileName)+'<br><span style="font-size:9px;color:#16a34a">✓ Header da regola memorizzata</span></div>';
+    } else {
+      dz.innerHTML='<div class="prev-drop-icon">✅</div><div class="prev-drop-label" style="color:#166534">'+escH(fileName)+'</div>';
+    }
+    importaDiretto(n);
+  }
+
+  function importaDiretto(n){
+    const S = SLOTS[n];
+    const res = S.raw;
+
+    // Attiva tutte le colonne presenti nel PDF — nessun step manuale
+    const cfg = {
+      code:     res.cols.code     != null,
+      descr:    res.cols.descr    != null,
+      um:       res.cols.um       != null,
+      qty:      res.cols.qty      != null,
+      price:    res.cols.price    != null,
+      imp:      res.cols.imp      != null,
+      civa:     res.cols.civa     != null,
+      consegna: res.cols.consegna != null
+    };
+    S.cfg = cfg;
+    S.colLabels = {
+      code:     res.cols.codeLabel     || 'Codice',
+      descr:    res.cols.descrLabel    || 'Descrizione',
+      um:       res.cols.umLabel       || 'UM',
+      qty:      res.cols.qtyLabel      || 'Qtà',
+      price:    res.cols.priceLabel    || 'Prezzo Scontato',
+      imp:      res.cols.impLabel      || 'Imponibile',
+      civa:     res.cols.civaLabel     || 'C.Iva',
+      consegna: res.cols.consegnaLabel || 'Consegna'
+    };
+
+    // Popola items
+    S.items = [];
+    res.rows.forEach((r, i) => {
+      if(r._tipo !== 'prodotto'){
+        S.items.push({idx:i, code:'', descr:r.descr, um:'', qty:'', prezzoUnit:0,
+          imponibile:'', civa:'', consegna:'', attiva:true, _tipo:'descr',
+          _origDescr:r.descr, _origQty:''});
+        return;
+      }
+      const unit = r.scontato || ((r.qty>0 && r.imponibile) ? r.imponibile/r.qty : 0);
+
+      // ── Riga "SCONTO IN FATTURA": importo negativo da SOTTRARRE ──
+      // Nel PDF il valore può finire in colonne diverse (qtà/prezzo) e generare
+      // moltiplicazioni errate. Lo normalizziamo: qty=1 e prezzo unitario = importo
+      // negativo. Resta soggetto al ricarico % di testata, ma escluso da manodopera/extra.
+      if(/sconto/i.test(r.descr||'')){
+        const cand=[r.qty, r.scontato, r.imponibile]
+          .map(v=>parseFloat(v)).filter(v=>!isNaN(v)&&v!==0);
+        let amt=0; cand.forEach(v=>{ if(Math.abs(v)>Math.abs(amt)) amt=v; });
+        const sconto = -Math.abs(amt);
+        S.items.push({
+          idx:i,
+          code:     cfg.code     ? r.code        : '',
+          descr:    cfg.descr    ? r.descr       : '',
+          um:       cfg.um       ? (r.um||'')    : '',
+          qty:      1,
+          prezzoUnit: sconto,
+          imponibile: cfg.imp    ? sconto        : '',
+          civa:     cfg.civa     ? (r.civa||'')  : '',
+          consegna: cfg.consegna ? (r.consegna||'') : '',
+          attiva:true, _tipo:'prodotto', _sconto:true,
+          _origDescr: cfg.descr ? r.descr : '', _origQty: 1
+        });
+        return;
+      }
+
+      S.items.push({
+        idx:i,
+        code:     cfg.code     ? r.code              : '',
+        descr:    cfg.descr    ? r.descr : '',
+        um:       cfg.um       ? (r.um||'')           : '',
+        qty:      cfg.qty      ? (r.qty!=null?r.qty:'') : '',
+        prezzoUnit: unit,
+        imponibile: cfg.imp  ? (r.imponibile!=null?r.imponibile:'') : '',
+        civa:     cfg.civa     ? (r.civa||'')         : '',
+        consegna: cfg.consegna ? (r.consegna||'')     : '',
+        attiva:true, _tipo:'prodotto',
+        _origDescr: cfg.descr ? r.descr : '', _origQty: cfg.qty ? (r.qty!=null?r.qty:'') : ''
+      });
+    });
+
+    // Aggiorna badge e mostra tabella
+    const badge = document.getElementById('prev-badge-'+n);
+    badge.textContent = S.prevNum ? 'N. '+S.prevNum : 'Importato';
+    badge.classList.remove('empty');
+    document.getElementById('prev-righe-'+n).style.display = 'block';
+    aggiornaTabellaSlot(n);
+    const loaded=Object.values(SLOTS).filter(s=>s.items&&s.items.length).length;
+    const bc=document.getElementById('badge-slot-count');
+    if(bc) bc.textContent=loaded+' / 5 caricati';
+    renderExport();
+  }
+
+  /* Aggiorna badge slot dall'esterno (usato da resetSlot via ✕) */
+  function aggiornaSlotBadge(){
+    const loaded = Object.values(SLOTS).filter(s=>s.items&&s.items.length).length;
+    const bc = document.getElementById('badge-slot-count');
+    if(bc) bc.textContent = loaded + ' / 5 caricati';
+  }
+
+  /* Wrapper per il pulsante ✕: pulisce slot, aggiorna badge, ridisegna export */
+  function resetSlotUI(n){
+    resetSlot(n);
+    aggiornaSlotBadge();
+    renderExport();
+  }
+
+
+
+  /* ══════════════════════════════════════════════════════════
+     AGGIORNA TABELLA SLOT (con calcolo prezzi live)
+  ══════════════════════════════════════════════════════════ */
+    function aggiornaTabellaSlot(n){
+    const S=SLOTS[n]; if(!S.items.length) return;
+    const cfg=S.cfg||{}, lab=S.colLabels||{};
+    const order=[
+      ['code', lab.code||'Codice'],
+      ['descr', lab.descr||'Descrizione'],
+      ['um', lab.um||'UM'],
+      ['qty', lab.qty||'Qtà'],
+      ['price', lab.price||'Prezzo U.'],
+      ['imp', lab.imp||'Imponibile'],
+      ['civa', lab.civa||'C.Iva'],
+      ['consegna', lab.consegna||'Consegna']
+    ].filter(co=>cfg[co[0]]);
+
+    let head='<table class="prev-mini-table"><thead><tr><th>✓</th><th class="col-id">ID</th>';
+    order.forEach(co=>{ const r=(['qty','price','imp','civa'].includes(co[0]))?' class="th-r"':''; head+=`<th${r}>${escH(co[1])}</th>`; });
+    head+='</tr></thead><tbody>';
+
+    let html=head, idc=0;
+    S.items.forEach((it, idx) => {
+      const attivo = it.attiva !== false;
+      const isP = it._tipo === 'prodotto';
+      let idTxt='';
+      if(isP){ if(attivo){ idc++; idTxt=String(idc).padStart(2,'0'); } else idTxt='–'; }
+      const muteCls = (!attivo && !isP) ? 'text-muted' : '';   // barra solo le righe descrittive nascoste
+      const descrCls = !isP ? 'pmt-descr' : '';
+
+      if(!isP){
+        html+=`<tr class="${muteCls} ${descrCls}">
+          <td style="text-align:center"><input type="checkbox" class="prev-attiva-chk" data-slot="${n}" data-idx="${idx}" ${attivo?'checked':''}></td>
+          <td class="col-id"></td>
+          <td colspan="${order.length}"><i>${escH(it.descr)}</i></td></tr>`;
+      } else {
+        let cells='';
+        order.forEach(co=>{
+          const k=co[0];
+          if(k==='code') cells+=`<td class="td-cod">${escH(it.code)}</td>`;
+          else if(k==='descr'){
+            const ed = it._descrEdited ? 'cell-edited' : '';   // solo fondino giallo
+            const excl = it.attiva===false;
+            const origDescr = (it._origDescr!=null) ? it._origDescr : it.descr;   // testo ORIGINALE
+            let badge='';
+            if(excl){
+              badge = it._distrib==='dist'
+                ? ' <span class="imp-state st-dist">↗ ridistribuito in export</span>'
+                : ' <span class="imp-state st-none">annullato in export</span>';
+            }
+            const dtxt = excl ? `<span class="imp-struck">${escH(origDescr)}</span>` : escH(origDescr);
+            cells+=`<td class="${ed}">${dtxt}${badge}</td>`;
+          }
+          else if(k==='um') cells+=`<td class="th-r">${escH(it.um)}</td>`;
+          else if(k==='qty'){ const ed=it._qtyEdited?' cell-edited':''; const origQty=(it._origQty!=null)?it._origQty:it.qty; cells+=`<td class="th-r${ed}">${origQty}</td>`; }
+          else if(k==='price') cells+=`<td class="td-r">${eurFmt(it.prezzoUnit)}</td>`;
+          else if(k==='imp') cells+=`<td class="td-r">${(it.imponibile!==''&&it.imponibile!=null)?eurFmt(it.imponibile):''}</td>`;
+          else if(k==='civa') cells+=`<td class="th-r">${escH(it.civa)}</td>`;
+          else if(k==='consegna') cells+=`<td>${escH(it.consegna)}</td>`;
+        });
+        html+=`<tr class="${muteCls}${it._sconto?' pmt-sconto':''}">
+          <td style="text-align:center"><input type="checkbox" class="prev-attiva-chk" data-slot="${n}" data-idx="${idx}" ${attivo?'checked':''}></td>
+          <td class="col-id">${idTxt}</td>${cells}</tr>`;
+      }
+    });
+    html += '</tbody></table>';
+
+    const tot = S.raw && S.raw.totals;
+    if(tot && tot.length){
+      html += '<div style="font-size:10px;font-weight:800;color:#166534;margin:12px 0 4px">TOTALI DOCUMENTO DI ORIGINE</div>';
+      html += '<table class="prev-mini-table prev-totali-table"><thead><tr>';
+      tot.forEach(t=>{ html+=`<th class="th-r">${escH(t.label)}</th>`; });
+      html += '</tr></thead><tbody><tr>';
+      tot.forEach(t=>{ html+=`<td class="td-r" style="font-weight:800">${escH(t.value)}</td>`; });
+      html += '</tr></tbody></table>';
+    }
+
+    document.getElementById('prev-table-'+n).innerHTML = html;
+
+    document.getElementById('prev-table-'+n).querySelectorAll('.prev-attiva-chk').forEach(chk=>{
+        chk.addEventListener('change', e=>{
+            const k = e.target.dataset.slot, idx = e.target.dataset.idx;
+            SLOTS[k].items[idx].attiva = e.target.checked;
+            aggiornaTabellaSlot(k);
+        });
+    });
+  }
+
+
+
+
+
+  /* ══════════════════════════════════════════════════════════
+     SPLITTER DRAG
+  ══════════════════════════════════════════════════════════ */
+  (function(){
+    const layout   = document.getElementById('two-col-layout');
+    const colSx    = document.getElementById('col-sx');
+    const splitter = document.getElementById('col-splitter');
+    if(!layout || !colSx || !splitter) return;
+
+    // Larghezza iniziale colonna A
+    colSx.style.width = '50%';
+
+    let dragging = false, startX = 0, startW = 0;
+
+    splitter.addEventListener('pointerdown', e => {
+      dragging = true;
+      startX   = e.clientX;
+      startW   = colSx.getBoundingClientRect().width;
+      splitter.classList.add('dragging');
+      splitter.setPointerCapture(e.pointerId);
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    });
+
+    splitter.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const totalW = layout.getBoundingClientRect().width - 8; // 8 = splitter width
+      const newW   = Math.max(200, Math.min(totalW - 200, startW + (e.clientX - startX)));
+      colSx.style.width  = newW + 'px';
+      colSx.style.flex   = 'none';
+    });
+
+    splitter.addEventListener('pointerup', e => {
+      dragging = false;
+      splitter.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    });
+  })();
+
+
+  /* ══════════════════════════════════════════════════════════
+     EXPORT — COMPUTO METRICO
+     Stato: _expRicRow[slot][idx] = ricarico personalizzato per riga
+  ══════════════════════════════════════════════════════════ */
+  const _expRicRow    = {};   // {slotN: {itemIdx: ricValue}}
+  const _expParams    = {};   // {slotN: {ric, ore, tar, oneri, extraLibDesc, extraLibVal, trasportoDist, speseDist}}
+  function expSlotParams(n){
+    if(!_expParams[n]) _expParams[n]={
+      ric:30, ore:0, tar:40, oneri:0,
+      extraLibDesc:'', extraLibVal:0,
+      trasportoDist:false, speseDist:false
+    };
+    return _expParams[n];
+  }
+
+
+
+  /* Calcola il prezzo unitario finale di un item:
+     prezzoUnit × (1 + ric/100) + quota manodopera */
+  function expCalcUnit(it, ric, mobQuota){
+    if(it._tipo !== 'prodotto' || !it.attiva) return 0;
+    const base = it.prezzoUnit || 0;
+    return base * (1 + ric/100) + mobQuota;
+  }
+
+  /* Calcola la quota manodopera pro-rata per un singolo slot */
+  function expMobQuota(slotItems, ore, tar){
+    const totMob = ore * tar;
+    if(!totMob) return () => 0;
+    const totForn = slotItems
+      .filter(it=>it._tipo==='prodotto'&&it.attiva)
+      .reduce((a,it)=>{
+        const qty = parseFloat(it.qty)||1;
+        return a + (it.prezzoUnit||0)*qty;
+      },0);
+    if(!totForn) return () => 0;
+    return (it) => {
+      const qty = parseFloat(it.qty)||1;
+      return ((it.prezzoUnit||0)*qty / totForn) * totMob / Math.max(parseFloat(it.qty)||1,1);
+    };
+  }
+
+  /* Genera tutto il contenuto della colonna B */
+  // Sequenza fissa dei tre campi per-slot
+  const EXP_SLOT_SEQ = ['exp-slot-ric','exp-slot-ore','exp-slot-tar'];
+  let _expTabDirection = 0; // 0=nessun tab, 1=avanti, -1=indietro
+
+  /* Intercetta Tab/Shift+Tab PRIMA che change scatti */
+  document.addEventListener('keydown', e=>{
+    if(!e.target.classList.contains('exp-slot-ric') &&
+       !e.target.classList.contains('exp-slot-ore') &&
+       !e.target.classList.contains('exp-slot-tar')) return;
+    if(e.key === 'Tab'){
+      _expTabDirection = e.shiftKey ? -1 : 1;
+    } else {
+      _expTabDirection = 0;
+    }
+  }, true);
+
+  function renderExportAndFocus(prevEl){
+    const slot    = prevEl.dataset.slot;
+    const curCls  = Array.from(prevEl.classList).find(c=>c.startsWith('exp-slot-'));
+    const curIdx  = EXP_SLOT_SEQ.indexOf(curCls);
+    const dir     = _expTabDirection;
+    _expTabDirection = 0;
+
+    renderExport();
+
+    requestAnimationFrame(()=>{
+      let targetCls, targetSlot;
+      if(dir !== 0){
+        // Tab: muoviti al campo successivo/precedente nella sequenza
+        const nextIdx = curIdx + dir;
+        if(nextIdx >= 0 && nextIdx < EXP_SLOT_SEQ.length){
+          // stesso slot, campo successivo
+          targetCls  = EXP_SLOT_SEQ[nextIdx];
+          targetSlot = slot;
+        } else if(nextIdx >= EXP_SLOT_SEQ.length){
+          // vai al primo campo dello slot successivo
+          const nextSlot = +slot + 1;
+          const nextSlotEl = document.querySelector(`.exp-slot-ric[data-slot="${nextSlot}"]`);
+          if(nextSlotEl){ nextSlotEl.focus(); nextSlotEl.select(); return; }
+          // nessuno slot successivo: lascia il browser gestire
+          return;
+        } else {
+          // Shift+Tab oltre il primo campo: vai all'ultimo campo dello slot precedente
+          const prevSlot = +slot - 1;
+          const prevSlotEl = document.querySelector(`.exp-slot-tar[data-slot="${prevSlot}"]`);
+          if(prevSlotEl){ prevSlotEl.focus(); prevSlotEl.select(); return; }
+          return;
+        }
+      } else {
+        // Enter o blur normale: resta sullo stesso campo
+        targetCls  = curCls;
+        targetSlot = slot;
+      }
+      const el = document.querySelector(`.${targetCls}[data-slot="${targetSlot}"]`);
+      if(el){ el.focus(); el.select(); }
+    });
+  }
+
+
+  /* ══════════════════════════════════════════════════════════
+     RENDER EXPORT — versione pulita
+     Flusso per ogni slot:
+       1. Calcola extraDist (trasporto PDF + spese PDF + voce libera)
+       2. Calcola totFornSlot = Σ(prezzoUnit × qty) righe attive
+       3. Per ogni riga: prezUnit = prezzoOrig×(1+ric%) + mobQ/u + extraQ/u
+       4. slotTotal = Σ prezUnit×qty
+       5. oneri = slotTotal × oneri%
+       6. slotTotaleFinale = slotTotal + oneri
+  ══════════════════════════════════════════════════════════ */
+  /* Imposta la modalità di una riga esclusa: 'none' (annulla valore) o 'dist' (ridistribuisci) */
+  window.expSetDistrib = function(n, idx, mode){
+    const it = SLOTS[n] && SLOTS[n].items[idx];
+    if(!it) return;
+    it.attiva  = false;
+    it._distrib = mode;
+    aggiornaTabellaSlot(n);
+    renderExport();
+  };
+
+  /* Apre/chiude la scheda estesa di catalogo per una riga */
+  window.expToggleScheda = function(n, idx){
+    const it = SLOTS[n] && SLOTS[n].items[idx];
+    if(!it) return;
+    it._schedaOpen = !it._schedaOpen;
+    renderExport();
+  };
+
+  /* Sotto-riga con descrizione estesa (3 funzionali + 3 tecniche) e immagine da URL */
+  function expSchedaRowHtml(n, idx, it){
+    if(!it._schedaOpen) return '';
+    const img = it._imgUrl
+      ? `<img src="${escH(it._imgUrl)}" alt="" class="exp-scheda-pic" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex')"><div class="exp-scheda-noimg" style="display:none">immagine non caricata</div>`
+      : '<div class="exp-scheda-noimg">nessuna immagine</div>';
+    const tec = escH(it._descTec||'');
+    const fun = escH(it._descFun||'');
+    const tecCls = it._descTec ? ' exp-edited' : '';
+    const funCls = it._descFun ? ' exp-edited' : '';
+    return `<tr class="exp-scheda-row" data-slot="${n}" data-idx="${idx}">
+      <td></td><td></td>
+      <td colspan="9" class="exp-scheda-cell">
+        <div class="exp-scheda">
+          <div class="exp-scheda-imgwrap">
+            ${img}
+            <input type="text" class="exp-scheda-url" data-slot="${n}" data-idx="${idx}" placeholder="URL immagine catalogo…" value="${escH(it._imgUrl||'')}">
+          </div>
+          <div class="exp-scheda-txt">
+            <div class="exp-scheda-lbl">Desc. Tecnica <span>(max 3 righe)</span></div>
+            <div class="exp-edit exp-scheda-area${tecCls}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="tec" data-ph="Descrizione tecnica dal catalogo…">${tec}</div>
+            <div class="exp-scheda-lbl">Funzione <span>(max 3 righe)</span></div>
+            <div class="exp-edit exp-scheda-area${funCls}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="fun" data-ph="Funzione dal catalogo…">${fun}</div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  function renderExport(){
+    const body      = document.getElementById('exp-body');
+    const emptyDiv  = document.getElementById('exp-empty');
+    const activeSlots = [1,2,3,4,5].filter(n=>SLOTS[n]&&SLOTS[n].items&&SLOTS[n].items.length);
+
+    if(!activeSlots.length){
+      body.innerHTML = '';   // svuota il DOM — nessun blocco residuo
+      if(emptyDiv){ emptyDiv.style.display='flex'; body.appendChild(emptyDiv); }
+      document.getElementById('exp-grand-badge').textContent='Totale: —';
+      return;
+    }
+    if(emptyDiv) emptyDiv.style.display='none';
+
+    let grandTotal  = 0;
+    let blocksHtml  = '';
+
+    activeSlots.forEach(n=>{
+      const S = SLOTS[n];
+      const p = expSlotParams(n);
+      if(!_expRicRow[n]) _expRicRow[n]={};
+
+      /* ── 1. Extra da distribuire ─────────────────────────────────────── */
+      const rawTotals    = (S.raw && S.raw.totals) || [];
+      const findVal = (re) => {
+        const e = rawTotals.find(t=>re.test(t.label));
+        return e ? (parseNum(e.value)||0) : 0;
+      };
+      const trasportoVal = findVal(/Trasporto/i);
+      const speseVal     = findVal(/Spese/i);
+      const extraDist    = (p.trasportoDist ? trasportoVal : 0)
+                         + (p.speseDist     ? speseVal     : 0)
+                         + (p.extraLibVal   || 0);
+
+      /* ── 2. Totale fornitore slot (denominatore pro-quota) ───────────── */
+      const totFornSlot = S.items
+        .filter(it=>it._tipo==='prodotto' && it.attiva!==false && !it._sconto)
+        .reduce((a,it)=>a+(it.prezzoUnit||0)*(parseFloat(it.qty)||0), 0);
+
+      /* ── 2b. Righe escluse ma "Distribuite": il loro importo (prezzo×qtà
+              col ricarico di riga) va nel monte da ripartire sulle righe attive,
+              così il totale del preventivo resta invariato. ───────────────── */
+      let redistPool = 0;
+      S.items.forEach((it, idx)=>{
+        if(it._tipo==='prodotto' && it.attiva===false && it._distrib==='dist'){
+          const q  = parseFloat(it.qty)||0;
+          const rr = (_expRicRow[n][idx]!=null) ? _expRicRow[n][idx] : p.ric;
+          redistPool += (it.prezzoUnit||0)*q*(1+rr/100);
+        }
+      });
+
+      /* ── 3. Quota extra e manodopera per unità ───────────────────────── */
+      const totMob   = p.ore * p.tar;
+      const extraTot = extraDist + redistPool;   // costi extra + righe ridistribuite
+
+      function quotaPerUnita(it){
+        if(!it.attiva || it._tipo!=='prodotto' || it._sconto) return {mob:0, extra:0};
+        const qty  = parseFloat(it.qty)||1;
+        const base = (it.prezzoUnit||0)*qty;
+        const mob  = totFornSlot>0 && totMob>0    ? (base/totFornSlot)*totMob/qty   : 0;
+        const extra= totFornSlot>0 && extraTot!==0 ? (base/totFornSlot)*extraTot/qty : 0;
+        return {mob, extra};
+      }
+
+      /* ── 4. Loop righe ───────────────────────────────────────────────── */
+      let slotTotal = 0;
+      let slotId    = 0;
+      let rowsHtml  = '';
+
+      S.items.forEach((it, idx)=>{
+        const hasCustomRic = _expRicRow[n][idx] != null;
+        const rowRic       = hasCustomRic ? _expRicRow[n][idx] : p.ric;
+        const ricCls       = hasCustomRic ? 'ric-inp ric-custom' : 'ric-inp';
+        const dEdit        = it._descrEdited ? ' exp-edited' : '';
+        const qEdit        = it._qtyEdited   ? ' exp-edited' : '';
+        const hasScheda    = !!(it._descTec || it._descFun || it._imgUrl);
+        const schedaBar    = (it._tipo==='prodotto')
+          ? `<div class="exp-scheda-bar"><button type="button" class="exp-scheda-toggle${hasScheda?' has-data':''}" onclick="expToggleScheda(${n},${idx})">📄 ${it._schedaOpen?'nascondi scheda':'scheda estesa'}</button></div>`
+          : '';
+
+        /* ── Riga descrittiva (nascondibile, barrata leggera) ── */
+        if(it._tipo !== 'prodotto'){
+          const off = it.attiva===false;
+          rowsHtml += `<tr class="exp-row-descr${off?' exp-row-excl':''}" data-slot="${n}" data-idx="${idx}">
+            <td class="td-c"><input type="checkbox" class="exp-chk" data-slot="${n}" data-idx="${idx}" ${off?'':'checked'}></td>
+            <td class="td-c"></td>
+            <td colspan="9" class="${off?'exp-strike':''}"><div class="exp-edit${dEdit}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="descr" style="font-style:italic;color:#94a3b8">${escH(it.descr)}</div></td>
+          </tr>`;
+          return;
+        }
+
+        const qty = parseFloat(it.qty)||0;
+
+        /* ── Riga prodotto ATTIVA ── */
+        if(it.attiva !== false){
+          const {mob, extra} = quotaPerUnita(it);
+          const prezUnit = (it.prezzoUnit||0)*(1+rowRic/100)+mob+extra;
+          const prezTot  = prezUnit * qty;
+          slotId++; slotTotal += prezTot;
+          const idTxt = String(slotId).padStart(2,'0');
+          rowsHtml += `<tr class="${it._sconto?'exp-row-sconto':''}" data-slot="${n}" data-idx="${idx}">
+            <td class="td-c"><input type="checkbox" class="exp-chk" data-slot="${n}" data-idx="${idx}" checked></td>
+            <td class="td-c" style="color:#94a3b8;font-weight:800;font-size:9px">${idTxt}</td>
+            <td class="td-cod">${escH(it.code)}</td>
+            <td><div class="exp-edit exp-descr${dEdit}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="descr" style="font-size:10px;line-height:1.3;max-width:200px;word-break:break-word">${escH(it.descr)}</div>${schedaBar}</td>
+            <td class="td-c" style="color:#64748b">${escH(it.um)}</td>
+            <td class="td-r"><div class="exp-edit exp-qty${qEdit}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="qty" style="min-width:28px">${qty||''}</div></td>
+            <td class="td-r" style="color:#64748b">${it.prezzoUnit?eurFmt(it.prezzoUnit):''}</td>
+            <td class="td-c"><input type="number" class="${ricCls}" data-slot="${n}" data-idx="${idx}" value="${rowRic}" min="0" max="999" step="0.5" tabindex="${n*10+50+idx}"></td>
+            <td class="td-r" style="color:#0369a1;font-size:9px">${mob>0?eurFmt(mob):''}</td>
+            <td class="td-r" style="color:#1e40af;font-weight:800">${eurFmt(prezUnit)}</td>
+            <td class="td-fin">${eurFmt(prezTot)}</td>
+          </tr>`;
+          rowsHtml += expSchedaRowHtml(n, idx, it);
+          return;
+        }
+
+        /* ── Riga prodotto ESCLUSA dalla stampa: Annulla valore / Ridistribuisci ── */
+        const mode = it._distrib==='dist' ? 'dist' : 'none';
+        const stateBadge = mode==='dist'
+          ? '<span class="exp-state-badge st-dist">↗ ridistribuito</span>'
+          : '<span class="exp-state-badge st-none">valore annullato</span>';
+        const toggle = `<div class="exp-mode-toggle">
+          <button type="button" class="exp-mode-btn${mode==='none'?' on-none':''}" onclick="expSetDistrib(${n},${idx},'none')" title="Il valore sparisce dal totale">✗ Annulla</button>
+          <button type="button" class="exp-mode-btn${mode==='dist'?' on-dist':''}" onclick="expSetDistrib(${n},${idx},'dist')" title="Il valore viene ripartito proporzionalmente sulle righe attive">↗ Distrib.</button>
+        </div>`;
+        rowsHtml += `<tr class="exp-row-excl${it._sconto?' exp-row-sconto':''}" data-slot="${n}" data-idx="${idx}">
+          <td class="td-c"><input type="checkbox" class="exp-chk" data-slot="${n}" data-idx="${idx}"></td>
+          <td class="td-c" style="color:#cbd5e1;font-weight:800;font-size:9px">–</td>
+          <td class="td-cod exp-strike">${escH(it.code)}</td>
+          <td><div class="exp-edit exp-descr exp-strike${dEdit}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="descr" style="font-size:10px;line-height:1.3;max-width:200px;word-break:break-word">${escH(it.descr)}</div>${schedaBar}</td>
+          <td class="td-c exp-strike" style="color:#94a3b8">${escH(it.um)}</td>
+          <td class="td-r"><div class="exp-edit exp-qty exp-strike${qEdit}" contenteditable="true" data-slot="${n}" data-idx="${idx}" data-field="qty" style="min-width:28px">${qty||''}</div></td>
+          <td class="td-r exp-strike" style="color:#94a3b8">${it.prezzoUnit?eurFmt(it.prezzoUnit):''}</td>
+          <td class="td-c"><input type="number" class="${ricCls}" data-slot="${n}" data-idx="${idx}" value="${rowRic}" min="0" max="999" step="0.5"></td>
+          <td class="td-c">${stateBadge}</td>
+          <td class="td-c" colspan="2">${toggle}</td>
+        </tr>`;
+        rowsHtml += expSchedaRowHtml(n, idx, it);
+      });
+
+      /* ── 5. Oneri di sicurezza ───────────────────────────────────────── */
+      const oneriVal        = slotTotal * (p.oneri/100);
+      const slotTotaleFinale= slotTotal + oneriVal;
+      grandTotal += slotTotaleFinale;
+
+      /* ── HTML ────────────────────────────────────────────────────────── */
+      const titleInput = document.querySelector(`.prev-panel-titolo-edit[data-slot="${n}"]`);
+      const title      = (titleInput&&titleInput.value.trim()) || ('Preventivo '+n);
+      const prevNum    = S.prevNum ? ' · N. '+S.prevNum : '';
+
+      // Sezione extra
+      let extraHtml = `<div class="exp-extra-section">
+        <div class="exp-extra-title">📦 Costi extra — distribuzione pro-quota su ogni riga</div>`;
+
+      if(trasportoVal){
+        extraHtml += `<div class="exp-extra-row">
+          <input type="checkbox" class="exp-extra-chk" data-slot="${n}" data-key="trasportoDist" ${p.trasportoDist?'checked':''}>
+          <span class="exp-extra-label">Trasporto (da PDF)</span>
+          <span class="exp-extra-val">${eurFmt(trasportoVal)}</span>
+          <span class="exp-extra-badge">${p.trasportoDist?'✓ incluso nelle righe':'da includere'}</span>
+        </div>`;
+      }
+      if(speseVal){
+        extraHtml += `<div class="exp-extra-row">
+          <input type="checkbox" class="exp-extra-chk" data-slot="${n}" data-key="speseDist" ${p.speseDist?'checked':''}>
+          <span class="exp-extra-label">Spese (da PDF)</span>
+          <span class="exp-extra-val">${eurFmt(speseVal)}</span>
+          <span class="exp-extra-badge">${p.speseDist?'✓ incluso nelle righe':'da includere'}</span>
+        </div>`;
+      }
+      extraHtml += `<div class="exp-extra-row">
+        <span style="font-size:11px;font-weight:800;color:#92400e;min-width:18px">+</span>
+        <input type="text" class="exp-extra-descr exp-lib-descr" data-slot="${n}"
+          placeholder="Voce extra libera (descrizione)…" value="${escH(p.extraLibDesc||'')}">
+        <input type="number" class="exp-extra-input exp-lib-val" data-slot="${n}"
+          placeholder="0,00" value="${p.extraLibVal||''}">
+        <span class="exp-extra-label" style="min-width:auto">€</span>
+      </div>`;
+      if(extraDist>0){
+        extraHtml += `<div class="exp-extra-row" style="padding-top:3px;border-top:1px dashed #fcd34d;margin-top:2px">
+          <span class="exp-extra-label" style="color:#d97706">Totale extra distribuito</span>
+          <span class="exp-extra-val" style="color:#d97706;font-size:12px">${eurFmt(extraDist)}</span>
+        </div>`;
+      }
+      if(redistPool){
+        extraHtml += `<div class="exp-extra-row" style="padding-top:3px;border-top:1px dashed #93c5fd;margin-top:2px">
+          <span class="exp-extra-label" style="color:#1e40af">↗ Valore righe ridistribuite</span>
+          <span class="exp-extra-val" style="color:#1e40af;font-size:12px">${eurFmt(redistPool)}</span>
+        </div>`;
+      }
+      extraHtml += `</div>`;
+
+      // Riga imponibile + oneri
+      const oneriHtml = `
+        <div class="exp-imponibile-row">
+          <span class="exp-imponibile-lbl">Imponibile (righe + extra)</span>
+          <span class="exp-imponibile-val">${eurFmt(slotTotal)}</span>
+        </div>
+        <div class="exp-oneri-row">
+          <span class="exp-oneri-label">⚠ Oneri di Sicurezza</span>
+          <input type="number" class="exp-oneri-input exp-slot-oneri" data-slot="${n}"
+            value="${p.oneri}" min="0" max="100" step="0.1" placeholder="0">
+          <span class="exp-param-unit" style="color:#166534">%</span>
+          <span style="color:#166534;font-size:11px;font-weight:800;min-width:80px;text-align:right">
+            ${oneriVal>0?eurFmt(oneriVal):'—'}
+          </span>
+          <span style="margin-left:auto;font-size:13px;font-weight:900;color:#166534">
+            Totale: ${eurFmt(slotTotaleFinale)}
+          </span>
+        </div>`;
+
+      blocksHtml += `<div class="exp-block" id="exp-block-${n}">
+        <div class="exp-block-head">
+          <span class="exp-block-num">${n}</span>
+          <span class="exp-block-title">${escH(title)}${escH(prevNum)}</span>
+          <span class="exp-block-subtot">${eurFmt(slotTotaleFinale)}</span>
+        </div>
+        <div class="exp-params-slot">
+          <span class="exp-param-label">Ric%</span>
+          <input type="number" class="exp-param-input exp-slot-ric" data-slot="${n}"
+            value="${p.ric}" min="0" max="500" step="0.5" style="width:90px" tabindex="${n*10+1}">
+          <span class="exp-param-unit">%</span>
+          <span class="exp-param-sep" style="margin:0 6px">+</span>
+          <span class="exp-param-label">Ore</span>
+          <input type="number" class="exp-param-input exp-slot-ore" data-slot="${n}"
+            value="${p.ore}" min="0" step="0.5" style="width:90px" tabindex="${n*10+2}">
+          <span class="exp-param-sep" style="margin:0 4px">×</span>
+          <input type="number" class="exp-param-input exp-slot-tar" data-slot="${n}"
+            value="${p.tar}" min="0" step="1" style="width:90px" tabindex="${n*10+3}">
+          <span class="exp-param-unit">€/h</span>
+          ${totMob>0?`<span class="exp-manod-badge">Manod. ${eurFmt(totMob)}</span>`:''}
+        </div>
+        ${extraHtml}
+        <table class="exp-table">
+          <thead><tr>
+            <th class="th-c" style="width:22px">✓</th>
+            <th class="th-c" style="width:24px">ID</th>
+            <th style="min-width:60px">Codice</th>
+            <th>Descrizione</th>
+            <th class="th-c">UM</th>
+            <th class="th-r">Qtà</th>
+            <th class="th-r">Prezzo Orig.</th>
+            <th class="th-c" style="width:52px">Ric%</th>
+            <th class="th-r" style="color:#0369a1">Manod./u</th>
+            <th class="th-r">Prezzo Unit.</th>
+            <th class="th-r">Prezzo</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+          <tfoot><tr>
+            <td class="td-l" colspan="10">Subtotale righe — ${escH(title)}</td>
+            <td>${eurFmt(slotTotal)}</td>
+          </tr></tfoot>
+        </table>
+        ${oneriHtml}
+      </div>`;
+    });
+
+    blocksHtml += `<div class="exp-grand-total">
+      <span class="exp-grand-label">🏁 Totale Generale</span>
+      <span class="exp-grand-val">${eurFmt(grandTotal)}</span>
+    </div>`;
+
+    body.innerHTML = blocksHtml;
+    document.getElementById('exp-grand-badge').textContent = 'Totale: '+eurFmt(grandTotal);
+
+    /* ── Bind eventi ───────────────────────────────────────────────────── */
+    body.querySelectorAll('.exp-chk').forEach(chk=>{
+      chk.addEventListener('change', e=>{
+        const n=+e.target.dataset.slot, idx=+e.target.dataset.idx;
+        const it=SLOTS[n].items[idx];
+        it.attiva = e.target.checked;
+        if(!e.target.checked){ if(it._distrib==null) it._distrib='none'; }   // default: valore annullato
+        else { it._distrib=null; }
+        aggiornaTabellaSlot(n);
+        renderExport();
+      });
+    });
+
+    /* Modifica inline Descrizione / Quantità (con evidenza, ribaltata in import) */
+    body.querySelectorAll('.exp-edit').forEach(el=>{
+      el.addEventListener('keydown', ev=>{
+        const f=el.dataset.field;
+        if(ev.key==='Enter' && (f==='descr'||f==='qty')){ ev.preventDefault(); el.blur(); }
+      });
+      el.addEventListener('blur', ev=>{
+        const n=+el.dataset.slot, idx=+el.dataset.idx, field=el.dataset.field;
+        const it=SLOTS[n].items[idx]; if(!it) return;
+        if(field==='descr'){
+          const v=el.textContent.replace(/\s+/g,' ').trim();
+          if(v!==(it.descr||'')){ it.descr=v; it._descrEdited=true; }
+        } else if(field==='qty'){
+          const raw=el.textContent.trim().replace(',', '.');
+          const newVal = raw==='' ? '' : (isNaN(parseFloat(raw))?it.qty:parseFloat(raw));
+          if(String(newVal)!==String(it.qty)){ it.qty=newVal; it._qtyEdited=true; }
+        } else if(field==='tec'){
+          const v=el.innerText.replace(/\u00a0/g,' ').replace(/[ \t]+$/gm,'').trim();
+          if(v!==(it._descTec||'')){ it._descTec=v; it._descTecEdited=true; }
+        } else if(field==='fun'){
+          const v=el.innerText.replace(/\u00a0/g,' ').replace(/[ \t]+$/gm,'').trim();
+          if(v!==(it._descFun||'')){ it._descFun=v; it._descFunEdited=true; }
+        }
+        aggiornaTabellaSlot(n);
+        renderExport();
+      });
+    });
+
+    body.querySelectorAll('.exp-scheda-url').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const n=+inp.dataset.slot, idx=+inp.dataset.idx;
+        const it=SLOTS[n].items[idx]; if(!it) return;
+        it._imgUrl = inp.value.trim();
+        renderExport();
+      });
+    });
+
+    body.querySelectorAll('.ric-inp').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const n=+e.target.dataset.slot, idx=+e.target.dataset.idx;
+        const val=parseFloat(e.target.value);
+        if(!isNaN(val)){ _expRicRow[n][idx]=val; inp.classList.add('ric-custom'); }
+        else { delete _expRicRow[n][idx]; inp.classList.remove('ric-custom'); }
+        renderExport();
+      });
+    });
+
+    body.querySelectorAll('.exp-slot-ric').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        expSlotParams(+e.target.dataset.slot).ric=parseFloat(e.target.value)||0;
+        renderExportAndFocus(e.target);
+      });
+    });
+    body.querySelectorAll('.exp-slot-ore').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        expSlotParams(+e.target.dataset.slot).ore=parseFloat(e.target.value)||0;
+        renderExportAndFocus(e.target);
+      });
+    });
+    body.querySelectorAll('.exp-slot-tar').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        expSlotParams(+e.target.dataset.slot).tar=parseFloat(e.target.value)||40;
+        renderExportAndFocus(e.target);
+      });
+    });
+
+    body.querySelectorAll('.exp-extra-chk').forEach(chk=>{
+      chk.addEventListener('change', e=>{
+        expSlotParams(+e.target.dataset.slot)[e.target.dataset.key]=e.target.checked;
+        renderExport();
+      });
+    });
+
+    body.querySelectorAll('.exp-lib-descr').forEach(inp=>{
+      inp.addEventListener('change', e=>{expSlotParams(+e.target.dataset.slot).extraLibDesc=e.target.value;});
+      inp.addEventListener('blur',   e=>{expSlotParams(+e.target.dataset.slot).extraLibDesc=e.target.value;});
+    });
+    body.querySelectorAll('.exp-lib-val').forEach(inp=>{
+      const update=e=>{
+        expSlotParams(+e.target.dataset.slot).extraLibVal=parseFloat(e.target.value)||0;
+        renderExport();
+      };
+      inp.addEventListener('change',update);
+      inp.addEventListener('blur',update);
+    });
+
+    body.querySelectorAll('.exp-slot-oneri').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        expSlotParams(+e.target.dataset.slot).oneri=parseFloat(e.target.value)||0;
+        renderExport();
+      });
+    });
+  }
+
+
+  /* ══════════════════════════════════════════════════════════
+     SALVA / IMPORT EXPORT  (cartella "Export Preventivi")
+     - Salva l'intero stato (preventivi importati + computo) in JSON
+     - Richiede il Nome Cliente / Progetto prima del salvataggio
+     - Nome file: Prev.Tesser_Cliente <nome>_<GG_MM_AAAA>_<hhmm>.json
+     - Usa la File System Access API quando disponibile (cartella
+       ricordata e modificabile); fallback su download / input file.
+  ══════════════════════════════════════════════════════════ */
+  const EXPORT_DIR_NAME = 'Export Preventivi';
+
+  function toast(msg){
+    let t=document.getElementById('app-toast');
+    if(!t){ t=document.createElement('div'); t.id='app-toast'; t.className='app-toast'; document.body.appendChild(t); }
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),4500);
+  }
+
+  /* ── IndexedDB: memorizza l'handle della cartella export ── */
+  function idbOpen(){
+    return new Promise((res,rej)=>{
+      const r=indexedDB.open('tesser_export_db',1);
+      r.onupgradeneeded=()=>r.result.createObjectStore('handles');
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+    });
+  }
+  async function idbGet(k){ const db=await idbOpen(); return new Promise((res,rej)=>{ const t=db.transaction('handles','readonly').objectStore('handles').get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); }
+  async function idbSet(k,v){ const db=await idbOpen(); return new Promise((res,rej)=>{ const t=db.transaction('handles','readwrite').objectStore('handles').put(v,k); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }
+
+  async function ensurePermission(handle,mode){
+    const o={mode};
+    if((await handle.queryPermission(o))==='granted') return true;
+    if((await handle.requestPermission(o))==='granted') return true;
+    return false;
+  }
+
+  /* Restituisce (creando se serve) la cartella "Export Preventivi" */
+  async function getExportDir(forcePick){
+    if(!forcePick){
+      try{
+        const d=await idbGet('exportDir');
+        if(d && await ensurePermission(d,'readwrite')) return d;
+      }catch(e){}
+    }
+    const parent=await window.showDirectoryPicker({mode:'readwrite',startIn:'documents'});
+    const sub=await parent.getDirectoryHandle(EXPORT_DIR_NAME,{create:true});
+    try{ await idbSet('exportDir',sub); }catch(e){}
+    return sub;
+  }
+
+  /* ── Nome file secondo specifica ── */
+  function buildExportFileName(cliente){
+    const d=new Date(), p=x=>String(x).padStart(2,'0');
+    const data=`${p(d.getDate())}_${p(d.getMonth()+1)}_${d.getFullYear()}`;
+    const ora=`${p(d.getHours())}${p(d.getMinutes())}`;
+    const safe=(cliente||'').trim().replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,' ').trim();
+    return `Prev.Tesser_Cliente ${safe}_${data}_${ora}.json`;
+  }
+
+  /* ── Serializza lo stato (include i preventivi importati) ── */
+  function buildExportData(){
+    const slots={};
+    for(let n=1;n<=5;n++){
+      const S=SLOTS[n];
+      const tEl=document.querySelector(`.prev-panel-titolo-edit[data-slot="${n}"]`);
+      slots[n]={
+        titolo:   tEl?tEl.value:'',
+        fileName: S.fileName||'',
+        prevNum:  S.prevNum||'',
+        cfg:      S.cfg||{},
+        colLabels:S.colLabels||{},
+        items:    S.items||[],
+        raw:      S.raw ? {docNum:S.raw.docNum||'', cols:S.raw.cols||{}, totals:S.raw.totals||null} : null,
+        params:   _expParams[n]||null,
+        ricRow:   _expRicRow[n]||null
+      };
+    }
+    return {
+      app:'ConvertitorePreventivoFornitore', version:8,
+      savedAt:new Date().toISOString(),
+      cliente:(document.getElementById('cliente-cfg').value||''),
+      slots
+    };
+  }
+
+  /* ── Ripristina la UI di uno slot caricato da export ── */
+  function restoreSlotUI(n){
+    const S=SLOTS[n];
+    const dz=document.getElementById('prev-drop-'+n);
+    if(dz) dz.innerHTML='<div class="prev-drop-icon">✅</div><div class="prev-drop-label" style="color:#166534">'
+      +escH(S.fileName||'Preventivo')+'<br><span style="font-size:9px;color:#16a34a">✓ Da export salvato</span></div>';
+    const badge=document.getElementById('prev-badge-'+n);
+    if(badge){ badge.textContent=S.prevNum?'N. '+S.prevNum:'Importato'; badge.classList.remove('empty'); badge.style=''; }
+    const righe=document.getElementById('prev-righe-'+n);
+    if(righe) righe.style.display='block';
+    aggiornaTabellaSlot(n);
+  }
+
+  /* ── Applica i dati di un export importato ── */
+  function applyExportData(data){
+    if(!data || !data.slots) throw new Error('Struttura non riconosciuta');
+    for(let n=1;n<=5;n++) resetSlot(n);
+    const cli=document.getElementById('cliente-cfg'); if(cli) cli.value=data.cliente||'';
+    for(let n=1;n<=5;n++){
+      const sd=data.slots[n]; if(!sd) continue;
+      const tEl=document.querySelector(`.prev-panel-titolo-edit[data-slot="${n}"]`);
+      if(tEl) tEl.value=sd.titolo||'';
+      if(sd.items && sd.items.length){
+        SLOTS[n].items     = sd.items;
+        SLOTS[n].cfg       = sd.cfg||{};
+        SLOTS[n].colLabels = sd.colLabels||{};
+        SLOTS[n].prevNum   = sd.prevNum||'';
+        SLOTS[n].fileName  = sd.fileName||'';
+        SLOTS[n].raw       = sd.raw||{totals:null};
+        if(sd.params) _expParams[n]=sd.params;
+        if(sd.ricRow) _expRicRow[n]=sd.ricRow;
+        restoreSlotUI(n);
+      }
+    }
+    aggiornaSlotBadge();
+    renderExport();
+  }
+
+  function downloadBlob(text,fname){
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+    a.download=fname; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  }
+
+  /* ══ SALVA EXPORT ══ */
+  async function salvaExport(ev){
+    const cliInput=document.getElementById('cliente-cfg');
+    const cli=(cliInput.value||'').trim();
+    if(!cli){
+      cliInput.focus();
+      cliInput.style.borderColor='#ef4444';
+      cliInput.style.boxShadow='0 0 0 3px rgba(239,68,68,.2)';
+      cliInput.placeholder='⚠ Inserisci prima il Nome Cliente / Progetto';
+      toast('⚠ Inserisci il Nome Cliente / Progetto prima di salvare l\'export.');
+      return;
+    }
+    cliInput.style.borderColor=''; cliInput.style.boxShadow='';
+    const loaded=Object.values(SLOTS).some(s=>s.items&&s.items.length);
+    if(!loaded){ toast('Nessun preventivo importato da salvare.'); return; }
+
+    const json=JSON.stringify(buildExportData(),null,2);
+    const fname=buildExportFileName(cli);
+    const forcePick=!!(ev && ev.shiftKey);
+
+    if(window.showDirectoryPicker){
+      try{
+        const dir=await getExportDir(forcePick);
+        const fh=await dir.getFileHandle(fname,{create:true});
+        const w=await fh.createWritable();
+        await w.write(new Blob([json],{type:'application/json'}));
+        await w.close();
+        toast('✅ Export salvato nella cartella "'+EXPORT_DIR_NAME+'"\n'+fname);
+        return;
+      }catch(err){
+        if(err && err.name==='AbortError') return;
+        console.warn('FS API non disponibile, uso download:',err);
+      }
+    }
+    downloadBlob(json,fname);
+    toast('✅ Export scaricato:\n'+fname+'\n(spostalo nella cartella "'+EXPORT_DIR_NAME+'")');
+  }
+
+  /* ══ IMPORT EXPORT ══ */
+  async function importExport(){
+    if(window.showOpenFilePicker){
+      try{
+        let startIn='documents';
+        try{ const d=await idbGet('exportDir'); if(d) startIn=d; }catch(e){}
+        const [fh]=await window.showOpenFilePicker({
+          startIn,
+          multiple:false,
+          types:[{description:'Export Preventivi Tesser',accept:{'application/json':['.json']}}]
+        });
+        const file=await fh.getFile();
+        applyExportData(JSON.parse(await file.text()));
+        toast('✅ Export importato:\n'+file.name);
+        return;
+      }catch(err){
+        if(err && err.name==='AbortError') return;
+        console.warn('FS API non disponibile, uso input file:',err);
+      }
+    }
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='.json,application/json';
+    inp.onchange=async()=>{
+      const f=inp.files[0]; if(!f) return;
+      try{ applyExportData(JSON.parse(await f.text())); toast('✅ Export importato:\n'+f.name); }
+      catch(e){ toast('❌ File non valido: '+e.message); }
+    };
+    inp.click();
+  }
+
+  /* Ripristina lo stile del campo cliente mentre si digita */
+  (function(){
+    const cli=document.getElementById('cliente-cfg');
+    if(cli) cli.addEventListener('input',()=>{
+      cli.style.borderColor=''; cli.style.boxShadow='';
+      cli.placeholder='Nome Cliente / Progetto…';
+    });
+  })();
+
+
+  /* ══════════════════════════════════════════════════════════
+     STAMPA OFFERTA — documento cliente in finestra dedicata.
+     · solo righe con spunta attiva
+     · tabella orizzontale, subtotale per preventivo + totale generale
+     · testi standard di apertura e chiusura (Tesser Antenne)
+  ══════════════════════════════════════════════════════════ */
+  function computeSlotPrint(n){
+    const S=SLOTS[n], p=expSlotParams(n);
+    if(!_expRicRow[n]) _expRicRow[n]={};
+    const rawTotals=(S.raw&&S.raw.totals)||[];
+    const findVal=(re)=>{ const e=rawTotals.find(t=>re.test(t.label)); return e?(parseNum(e.value)||0):0; };
+    const extraDist=(p.trasportoDist?findVal(/Trasporto/i):0)+(p.speseDist?findVal(/Spese/i):0)+(p.extraLibVal||0);
+    const totFornSlot=S.items.filter(it=>it._tipo==='prodotto'&&it.attiva!==false&&!it._sconto)
+      .reduce((a,it)=>a+(it.prezzoUnit||0)*(parseFloat(it.qty)||0),0);
+    let redistPool=0;
+    S.items.forEach((it,idx)=>{ if(it._tipo==='prodotto'&&it.attiva===false&&it._distrib==='dist'){
+      const q=parseFloat(it.qty)||0, rr=(_expRicRow[n][idx]!=null)?_expRicRow[n][idx]:p.ric;
+      redistPool+=(it.prezzoUnit||0)*q*(1+rr/100);
+    }});
+    const totMob=p.ore*p.tar, extraTot=extraDist+redistPool;
+    function quota(it){
+      if(!it.attiva||it._tipo!=='prodotto'||it._sconto) return {mob:0,extra:0};
+      const qty=parseFloat(it.qty)||1, base=(it.prezzoUnit||0)*qty;
+      const mob=totFornSlot>0&&totMob>0?(base/totFornSlot)*totMob/qty:0;
+      const extra=totFornSlot>0&&extraTot!==0?(base/totFornSlot)*extraTot/qty:0;
+      return {mob,extra};
+    }
+    const rows=[]; let imponibile=0;
+    S.items.forEach((it,idx)=>{
+      if(it.attiva===false) return;                 // solo righe attive
+      if(it._tipo!=='prodotto'){ rows.push({tipo:'descr',descr:it.descr}); return; }
+      const qty=parseFloat(it.qty)||0;
+      const rr=(_expRicRow[n][idx]!=null)?_expRicRow[n][idx]:p.ric;
+      const {mob,extra}=quota(it);
+      const unit=(it.prezzoUnit||0)*(1+rr/100)+mob+extra;
+      const tot=unit*qty; imponibile+=tot;
+      rows.push({tipo:'prodotto',code:it.code,descr:it.descr,um:it.um,qty,unit,tot,tec:it._descTec,fun:it._descFun,img:it._imgUrl});
+    });
+    const oneri=imponibile*(p.oneri/100), totale=imponibile+oneri;
+    const tEl=document.querySelector('.prev-panel-titolo-edit[data-slot="'+n+'"]');
+    const title=(tEl&&tEl.value.trim())||('Preventivo '+n);
+    return {rows,imponibile,oneri,totale,title,prevNum:S.prevNum||''};
+  }
+
+  function buildOffertaHTML(cli, activeSlots){
+    const d=new Date(), pad=x=>String(x).padStart(2,'0');
+    const dataStr=pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
+    const nums=activeSlots.map(n=>SLOTS[n].prevNum).filter(Boolean).join(' · ')||'—';
+
+    let grand=0, sezioni='';
+    activeSlots.forEach(n=>{
+      const SP=computeSlotPrint(n); grand+=SP.totale;
+      let righe='';
+      SP.rows.forEach((r,i)=>{
+        if(r.tipo==='descr'){ righe+='<tr class="r-descr"><td></td><td></td><td colspan="5"><em>'+escH(r.descr)+'</em></td></tr>'; return; }
+        let scheda='';
+        if(r.tec||r.fun||r.img){
+          const img=r.img?'<img src="'+escH(r.img)+'" onerror="this.style.display=\'none\'">':'';
+          const tec=r.tec?'<div><strong>Desc. Tecnica:</strong> '+escH(r.tec).replace(/\n/g,'<br>')+'</div>':'';
+          const fun=r.fun?'<div><strong>Funzione:</strong> '+escH(r.fun).replace(/\n/g,'<br>')+'</div>':'';
+          scheda='<div class="scheda-print">'+img+'<div>'+tec+fun+'</div></div>';
+        }
+        righe+='<tr><td class="c">'+(i+1)+'</td><td>'+escH(r.code)+'</td><td>'+escH(r.descr)+scheda+'</td>'
+          +'<td class="c">'+escH(r.um)+'</td><td class="r">'+(r.qty||'')+'</td>'
+          +'<td class="r">'+eurFmt(r.unit)+'</td><td class="r">'+eurFmt(r.tot)+'</td></tr>';
+      });
+      const oneriRow=SP.oneri>0?'<tr><td colspan="6" class="r">Oneri di sicurezza</td><td class="r">'+eurFmt(SP.oneri)+'</td></tr>':'';
+      sezioni+='<div class="sezione"><h2 class="sez-tit">'+escH(SP.title)+(SP.prevNum?' <span>· N. '+escH(SP.prevNum)+'</span>':'')+'</h2>'
+        +'<table class="voci"><thead><tr><th class="c">#</th><th>Codice</th><th>Descrizione</th><th class="c">UM</th><th class="r">Qtà</th><th class="r">Prezzo Unit.</th><th class="r">Importo</th></tr></thead>'
+        +'<tbody>'+righe+'</tbody>'
+        +'<tfoot><tr><td colspan="6" class="r">Imponibile</td><td class="r">'+eurFmt(SP.imponibile)+'</td></tr>'
+        +oneriRow
+        +'<tr class="subtot"><td colspan="6" class="r">Subtotale — '+escH(SP.title)+'</td><td class="r">'+eurFmt(SP.totale)+'</td></tr></tfoot></table></div>';
+    });
+
+    const totaleGen='<table class="tot-gen"><tr><td>TOTALE GENERALE</td><td class="r">'+eurFmt(grand)+'</td></tr></table>'
+      +'<div class="iva-note">Importi espressi al netto di IVA, che sarà applicata a norma di legge.</div>';
+
+    const APERTURA=`
+      <p>Facciamo seguito alla Vostra richiesta e agli accordi intercorsi, ringraziandoVi per l'attenzione riservata alla nostra azienda.</p>
+      <p>Con la presente sottoponiamo alla Vostra attenzione la nostra migliore proposta tecnico-economica relativa alla fornitura e/o installazione dei prodotti e servizi richiesti.</p>
+      <p>La presente offerta è stata predisposta sulla base delle informazioni ricevute e delle valutazioni tecniche eseguite. Eventuali lavorazioni, materiali o attività non espressamente indicati nel presente preventivo sono da intendersi esclusi e potranno essere quotati separatamente o conteggiati a consuntivo, previa Vostra autorizzazione.</p>
+      <p>Restiamo a disposizione per eventuali chiarimenti tecnici o commerciali e, confidando che la proposta possa soddisfare le Vostre esigenze, porgiamo cordiali saluti.</p>`;
+
+    const DESCROPERA=`
+      <h2>Descrizione dell'opera</h2>
+      <p>La descrizione dell'opera comprende esclusivamente le lavorazioni, i materiali e i servizi riportati nelle righe di preventivo selezionate e attive.</p>
+      <p>In caso di presenza di più sezioni, l'offerta potrà essere suddivisa per area di intervento, tipologia di lavorazione o singolo preventivo, con relativo subtotale e totale generale finale.</p>
+      <p>Sono esclusi dalla proposta tutti gli interventi non espressamente indicati, comprese eventuali opere murarie, assistenze edili, modifiche agli impianti esistenti, adeguamenti normativi non preventivati, attività su linee elettriche, dati, fibra ottica, alimentazioni o altre infrastrutture non direttamente comprese nella descrizione dell'offerta.</p>
+      <h3>Riferimento alle detrazioni fiscali</h3>
+      <p>Eventuali riferimenti a detrazioni fiscali, bonus o agevolazioni sono da intendersi indicativi e subordinati alla verifica dei requisiti soggettivi e oggettivi del cliente, della normativa vigente al momento dell'esecuzione dei lavori e della documentazione richiesta dagli enti competenti.</p>
+      <p>Tesser Antenne S.r.l. non assume responsabilità in merito all'effettivo ottenimento delle agevolazioni fiscali, salvo specifico incarico scritto relativo alla gestione della pratica.</p>`;
+
+    const CHIUSURA=`
+      <h2>Condizioni particolari</h2>
+      <ul>
+        <li>Sono esclusi dal preventivo tutti i lavori, materiali, servizi e oneri non espressamente indicati e contemplati nella presente offerta.</li>
+        <li>Eventuali attività aggiuntive richieste dal cliente o resesi necessarie in corso d'opera saranno preventivamente comunicate e conteggiate separatamente, a preventivo integrativo oppure a consuntivo.</li>
+        <li>La validità del presente preventivo è di 30 giorni dalla data di emissione, salvo diversa indicazione scritta.</li>
+        <li>La data di installazione sarà concordata in base alla disponibilità delle parti, all'approvvigionamento dei materiali e alle condizioni operative del cantiere.</li>
+        <li>L'accettazione del preventivo comporta l'approvazione delle condizioni tecniche, economiche e commerciali riportate nel presente documento.</li>
+      </ul>
+      <h3>Condizioni di fornitura</h3>
+      <p><strong>Data installazione:</strong> da concordare.</p>
+      <p><strong>Pagamento:</strong> salvo diversa pattuizione scritta, il pagamento dovrà avvenire secondo una delle seguenti modalità:</p>
+      <ol>
+        <li><strong>Per importi ordinari / interventi standard:</strong> pagamento a saldo a fine lavori, alla consegna della fattura.</li>
+        <li><strong>Per forniture con materiali da ordinare o interventi programmati:</strong> acconto all'accettazione del preventivo; saldo a fine lavori, alla consegna della fattura.</li>
+        <li><strong>Per lavori di importo rilevante o cantieri strutturati:</strong> acconto all'accettazione del preventivo; eventuale pagamento intermedio a stato avanzamento lavori; saldo al termine dell'intervento o al collaudo, se previsto.</li>
+      </ol>
+      <p>In assenza di accordi diversi riportati nel preventivo, il pagamento si intende dovuto a ricevimento fattura. L'avvio dell'ordine, la prenotazione dei materiali e la programmazione dell'intervento potranno essere subordinati alla ricezione dell'accettazione firmata del preventivo e, ove previsto, dell'acconto concordato.</p>
+      <h3>Coordinate bancarie</h3>
+      <p>Intestatario: Tesser Antenne S.r.l.<br>IBAN: IT18 U030 6961 9041 0000 0008 564<br>Codice SDI: KBTEL2G</p>
+      <h3>Garanzia e condizioni generali di vendita</h3>
+      <p>I materiali installati sono garantiti per difetti di fabbricazione secondo quanto previsto dalla normativa vigente:</p>
+      <ul>
+        <li>24 mesi per utenza privata/consumatore;</li>
+        <li>12 mesi per utenza professionale, aziende e soggetti con partita IVA, salvo diversa garanzia del produttore.</li>
+      </ul>
+      <p>La garanzia non comprende danni causati da manomissioni, uso improprio, eventi atmosferici, sovratensioni, fulminazioni, infiltrazioni, guasti su impianti esistenti non oggetto dell'intervento o cause non imputabili a Tesser Antenne S.r.l.</p>
+      <p>Il servizio di assistenza è garantito durante tutto l'anno, con esclusione di festivi e prefestivi, salvo diversi accordi o contratti di manutenzione specifici.</p>
+      <p>Tutto il personale è formato, aggiornato e addestrato secondo le normative vigenti in materia di salute e sicurezza nei luoghi di lavoro, ai sensi del D.Lgs. 81/2008. La documentazione attestante la formazione e l'idoneità tecnico-professionale è disponibile presso la nostra sede.</p>
+      <p>L'azienda è certificata ISO 9001:2015, certificato n. 18-Q-0200101-TIC.</p>
+      <p>Tesser Antenne S.r.l. è coperta da polizza assicurativa per Responsabilità Civile R.C.T. - R.C.O. - R.C.I., con massimale pari a € 3.000.000,00 e franchigia pari a € 500,00.</p>
+      <p>Il Piano Operativo di Sicurezza, ove previsto, sarà trasmesso telematicamente prima dell'avvio delle attività.</p>
+      <p>Per accettazione del presente preventivo, firmare nello spazio "Firma per accettazione" e restituire copia via e-mail a: noc@tesser.it.</p>
+      <div class="firma"><div><strong>Timbro e firma per accettazione</strong></div><div class="firma-line">Firma per accettazione</div></div>`;
+
+    const FOOTER='TESSER ANTENNE S.R.L. · Via Gen. E. Reginato, 13 – 31100 Treviso · Reg. Imprese / C.F. / P.IVA 01893880268 · Tel. 0422 184 0000 – 0422 230 283 · www.tesser.it – info@tesser.it · ISO 9001:2015 Cert. n. 18-Q-0200101-TIC';
+
+    const CSS=`
+      *{box-sizing:border-box}
+      body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;line-height:1.55;margin:0;padding:18px}
+      .btn-print{position:fixed;top:12px;right:12px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;z-index:10}
+      .intestazione{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1e3a8a;padding-bottom:8px;margin-bottom:10px}
+      .logo{font-size:22px;font-weight:900;color:#1e3a8a;letter-spacing:-.5px}
+      .logo span{font-size:12px;font-weight:700;color:#64748b}
+      .doc-meta{text-align:right;font-size:10px;color:#475569}
+      .doc-meta .dt{font-size:13px;font-weight:800;color:#1e3a8a}
+      .dest{margin:8px 0 14px;font-size:12px}
+      .testo{margin:8px 0}
+      .testo p{margin:6px 0;text-align:justify}
+      .testo h2{font-size:13px;color:#1e3a8a;border-bottom:1px solid #cbd5e1;padding-bottom:3px;margin:14px 0 6px}
+      .testo h3{font-size:11px;color:#1e3a8a;margin:10px 0 4px}
+      .testo ul,.testo ol{margin:6px 0 6px 18px}
+      .testo li{margin:3px 0}
+      .sezione{margin:12px 0;break-inside:avoid}
+      .sez-tit{font-size:13px;color:#fff;background:#166534;padding:6px 10px;border-radius:6px 6px 0 0;margin:0}
+      .sez-tit span{font-weight:600;opacity:.85}
+      table.voci{width:100%;border-collapse:collapse;margin:0 0 4px}
+      .voci th{background:#1e3a8a;color:#fff;font-size:9px;text-transform:uppercase;padding:5px 6px;text-align:left}
+      .voci th.c,.voci td.c{text-align:center}
+      .voci th.r,.voci td.r{text-align:right}
+      .voci td{padding:5px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+      .voci tbody tr{break-inside:avoid}
+      .r-descr td{background:#f8fafc;color:#64748b}
+      .voci tfoot td{font-weight:800;padding:5px 6px;border-top:1px solid #cbd5e1}
+      .voci tfoot .subtot td{background:#eff6ff;color:#1e3a8a;font-size:12px}
+      .scheda-print{display:flex;gap:8px;margin-top:5px;padding:5px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;font-size:10px}
+      .scheda-print img{width:90px;height:90px;object-fit:contain;border:1px solid #e2e8f0;background:#fff;flex:0 0 auto}
+      .tot-gen{width:100%;border-collapse:collapse;margin:6px 0}
+      .tot-gen td{background:#1e3a8a;color:#fff;font-size:15px;font-weight:900;padding:8px 10px}
+      .tot-gen td.r{text-align:right}
+      .iva-note{font-size:9px;color:#64748b;margin-bottom:10px}
+      .chiusura{margin-top:14px;break-before:auto}
+      .firma{margin-top:20px}
+      .firma-line{margin-top:24px;border-top:1px solid #94a3b8;width:280px;padding-top:3px;color:#64748b;font-size:9px}
+      .print-footer{position:fixed;left:0;right:0;bottom:4mm;text-align:center;font-size:7.5px;color:#64748b;border-top:1px solid #cbd5e1;padding:4px 10px 0;margin:0 14px}
+      @page{size:A4;margin:14mm 12mm 20mm}
+      @media print{.btn-print{display:none}body{padding:0}}`;
+
+    return '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Offerta '+escH(cli)+' '+dataStr+'</title><style>'+CSS+'</style></head><body>'
+      +'<button class="btn-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button>'
+      +'<div class="print-footer">'+FOOTER+'</div>'
+      +'<div class="intestazione"><div class="logo">TESSER ANTENNE <span>S.r.l.</span></div>'
+      +'<div class="doc-meta"><div class="dt">OFFERTA / PREVENTIVO</div><div>Data: '+dataStr+'</div><div>Rif.: '+escH(nums)+'</div></div></div>'
+      +'<div class="dest">Spett.le<br><strong>'+escH(cli)+'</strong></div>'
+      +'<div class="testo">'+APERTURA+'</div>'
+      +'<div class="testo">'+DESCROPERA+'</div>'
+      +sezioni+totaleGen
+      +'<div class="testo chiusura">'+CHIUSURA+'</div>'
+      +'</body></html>';
+  }
+
+  function generaStampa(){
+    const cliInput=document.getElementById('cliente-cfg');
+    const cli=(cliInput.value||'').trim();
+    if(!cli){
+      cliInput.focus(); cliInput.style.borderColor='#ef4444'; cliInput.style.boxShadow='0 0 0 3px rgba(239,68,68,.2)';
+      toast('⚠ Inserisci il Nome Cliente / Progetto prima di generare la stampa.');
+      return;
+    }
+    const activeSlots=[1,2,3,4,5].filter(n=>SLOTS[n]&&SLOTS[n].items&&SLOTS[n].items.some(it=>it._tipo==='prodotto'&&it.attiva!==false));
+    if(!activeSlots.length){ toast('Nessuna riga attiva da stampare.'); return; }
+    const html=buildOffertaHTML(cli, activeSlots);
+    const w=window.open('','_blank');
+    if(!w){ toast('Abilita i popup del browser per generare la stampa.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
+</script>
+</body>
+</html>                       
