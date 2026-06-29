@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tesser Antenne — Import Preventivi Fornitore (PDF/Word) · v8</title>
+<title>Tesser Antenne — Import Preventivi Fornitore (PDF/Word) · v9</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -353,7 +353,7 @@
 
 <div class="topbar">
   <span>📞 0422 162 8998 &nbsp;·&nbsp; <strong>Tesser Antenne</strong> — Import Preventivi Fornitore</span>
-  <span style="font-size:10px;color:#64748b">Carica fino a 5 preventivi PDF o Word · i prezzi si aggiornano in tempo reale &nbsp;·&nbsp; <strong id="app-version" style="color:#0369a1">v8</strong></span>
+  <span style="font-size:10px;color:#64748b">Carica fino a 5 preventivi PDF o Word · i prezzi si aggiornano in tempo reale &nbsp;·&nbsp; <strong id="app-version" style="color:#0369a1">v9</strong></span>
 </div>
 
 <header class="main">
@@ -1414,6 +1414,118 @@
   }
 
 
+  /* ══════════════════════════════════════════════════════════
+     PARSER DEDICATO — OFFERTE MARCHIOL
+     Formato a colonne fisse senza colonna "Descrizione":
+       POSIZ | COD. ART. | MARCHIO | COD. PROD. | COD. ALTERN. |
+       UM | QUANTITA' | PRZ IVA ESCL. | IMPORTO | T.E. | CONS. ENTRO
+     Particolarità gestite:
+       • COD. PROD. può contenere spazi (es. "SMART DONGLEA-05")
+       • la descrizione articolo è sulla RIGA SUCCESSIVA
+       • moltiplicatori prezzo  /D (÷10)  /C (÷100)  /M (÷1000)
+       • righe stato "Disponibile/Segue" ignorate
+       • intestazioni di sezione ***...*** e note tecniche conservate
+     Mappa COD. PROD. (modello costruttore) nella colonna "Codice".
+  ══════════════════════════════════════════════════════════ */
+  const MAR_UM   = /^(PZ|NR|N|ML|MT|MQ|MC|LT|KG|GR|CT|H|HR|ORE|ROT|SET|KIT|UN|ME|CM|MM|M|CONF|PA)$/i;
+  const MAR_MOD  = {'/D':10,'/C':100,'/M':1000};
+  const MAR_AVAIL= /^(disponibile|non\s+disponibile|disp\.?|segue|in\s+arrivo|prossimo\s+arrivo|in\s+esaurimento)\.?$/i;
+  const MAR_FOOT = /www\.marchiol|Modulo\s*7\.1|Condizioni\s+Generali|Restando\s+a\s+V|colgo\s+l.occasione|MARCHIOL\s+S\.?\s*P\.?\s*A|distinti\s+saluti|E-?mail\s*:|Tel\.?\s*:/i;
+  const MAR_TOT  = /(NETTO\s+MERCE|SPESE\s+DI\s+TRASPORTO|TOTALE\s+IMPONIBILE|TOTALE\s+DOCUMENTO|TOTALE\s+IVATO|TOTALE\s+A\s+PAGARE)/i;
+  function marIsHeaderLine(t){ return /POSIZ/i.test(t) && /\bART\.?\b/i.test(t) && /IMPORTO/i.test(t); }
+
+  /* Riconosce e scompone una riga-dato articolo. Ritorna l'oggetto riga o null. */
+  function parseMarchiolDataLine(toks){
+    if(toks.length < 7) return null;
+    if(!/^\d{4,6}$/.test(toks[0])) return null;           // POSIZ (zero-pad)
+    let umIdx = -1;
+    for(let i=4;i<toks.length;i++){ if(MAR_UM.test(toks[i])){ umIdx=i; break; } }
+    if(umIdx < 4) return null;                            // serve COD.ALTERN prima di UM
+    const after = toks.slice(umIdx+1);
+    const nums  = after.map(parseNum).filter(v=>v!=null);
+    if(nums.length < 3) return null;                      // qtà, prezzo, importo
+    let mod=null;
+    for(const t of after){ const u=t.toUpperCase(); if(MAR_MOD[u]){ mod=MAR_MOD[u]; break; } }
+    const qty      = nums[0];
+    const priceRaw = nums[1];
+    const importo  = nums[nums.length-1];
+    const unit     = mod ? priceRaw/mod : priceRaw;
+    const codArt   = toks[1];
+    const marchio  = toks[2];
+    const codAltern= toks[umIdx-1];
+    const codProd  = toks.slice(3, umIdx-1).join(' ').trim();
+    return {
+      code: codProd || codArt,                           // scelta utente: COD. PROD.
+      descr:'', um: toks[umIdx],
+      qty: qty,
+      scontato: Math.round(unit*100)/100,
+      imponibile: importo,
+      civa:'', consegna:'', _tipo:'prodotto',
+      _marPosiz:toks[0], _marCodArt:codArt, _marMarchio:marchio, _marCodAltern:codAltern, _marMod:mod||1
+    };
+  }
+
+  /* Rileva il formato e produce la stessa struttura di parsePages:
+     {docNum, cols, ranges, rows, totals}.  Ritorna null se non è Marchiol. */
+  function parseMarchiol(allLines){
+    let isMar=false;
+    for(const L of allLines){ if(marIsHeaderLine(L.items.map(i=>i.str).join(' '))){ isMar=true; break; } }
+    if(!isMar) return null;
+
+    const rows=[]; const totals=[];
+    let docNum='', collecting=false, lastRow=null, mode='section', totalsStarted=false;
+
+    function pushDescr(txt){ rows.push({code:'',descr:txt,um:'',qty:null,scontato:null,imponibile:null,_tipo:'descr'}); }
+
+    for(const L of allLines){
+      const txt = L.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+      if(!txt) continue;
+
+      if(!docNum){ const m=txt.match(/\b([A-Z]{2,4}\/\d{6,})\b/); if(m) docNum=m[1]; }
+
+      // riga intestazione colonne (una per pagina) → (ri)attiva la raccolta
+      if(marIsHeaderLine(txt)){ collecting=true; mode='section'; lastRow=null; continue; }
+
+      // totali documento (catturati anche fuori dalla regione articoli)
+      if(MAR_TOT.test(txt)){
+        const lbl = txt.match(MAR_TOT)[1].toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+        const m   = txt.match(/(-?\d[\d.]*,\d{2})/);
+        if(m && !totals.some(t=>t.label===lbl)) totals.push({label:lbl, value:m[1]});
+        totalsStarted=true; collecting=false; continue;
+      }
+      if(totalsStarted) continue;
+      if(!collecting) continue;
+      if(MAR_FOOT.test(txt)){ collecting=false; continue; }   // piè di pagina / blocco firma
+      if(MAR_AVAIL.test(txt)) continue;                        // "Disponibile" / "Segue"
+
+      const toks = txt.split(' ').filter(Boolean);
+      const prod = parseMarchiolDataLine(toks);
+      if(prod){ rows.push(prod); lastRow=prod; mode='product'; continue; }
+
+      // intestazione di sezione  ***...***  oppure breve titolo che finisce con ":"
+      if(/\*\*\*/.test(txt) || (/:\s*$/.test(txt) && toks.length<=4)){
+        pushDescr(txt.replace(/\*+/g,'').trim()); mode='section'; lastRow=null; continue;
+      }
+
+      // testo libero → descrizione articolo o nota di sezione
+      if(mode==='product' && lastRow){
+        lastRow.descr = lastRow.descr ? lastRow.descr+' '+txt : txt;
+      } else {
+        const last = rows[rows.length-1];
+        if(last && last._tipo==='descr') last.descr += ' '+txt;
+        else pushDescr(txt);
+      }
+    }
+
+    const cols={
+      code:1, descr:1, um:1, qty:1, price:1, imp:1, civa:null, consegna:null,
+      codeLabel:'Cod. Prodotto', descrLabel:'Descrizione', umLabel:'UM',
+      qtyLabel:'Q.tà', priceLabel:'Prezzo Unit.', impLabel:'Importo'
+    };
+    return {docNum, cols, ranges:null, rows, totals: totals.length?totals:null, _marchiol:true};
+  }
+
+
 
   /* ══════════════════════════════════════════════════════════
      LISTENER UNICI — event delegation sul documento
@@ -1616,6 +1728,16 @@
       allLines.push(...lines);
     });
     SLOTS[n]._allLines=allLines;
+
+    // ── PARSER DEDICATO MARCHIOL (provato per primo) ──
+    const mar = parseMarchiol(allLines);
+    if(mar && mar.rows && mar.rows.some(r=>r._tipo==='prodotto')){
+      applyOriginTotalsFallback(mar, pages);
+      SLOTS[n].raw=mar; SLOTS[n].fileName=fileName; SLOTS[n].prevNum=mar.docNum||'';
+      dz.innerHTML='<div class="prev-drop-icon">✅</div><div class="prev-drop-label" style="color:#166534">'+escH(fileName)+'<br><span style="font-size:9px;color:#16a34a">✓ Formato Marchiol riconosciuto</span></div>';
+      importaDiretto(n);
+      return;
+    }
 
     const colsSmart=detectColumnsSmart(allLines);
 
@@ -2495,7 +2617,7 @@
       };
     }
     return {
-      app:'ConvertitorePreventivoFornitore', version:8,
+      app:'ConvertitorePreventivoFornitore', version:9,
       savedAt:new Date().toISOString(),
       cliente:(document.getElementById('cliente-cfg').value||''),
       slots
