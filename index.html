@@ -355,7 +355,7 @@
   <div class="logo">
     <a class="logo-box" href="https://www.rete21.it" target="_blank" rel="noopener"><img class="logo-img" src="https://rete21.it/wp-content/uploads/2023/10/rete21-impianti-tecnologici.png" alt="Rete 21 – Impianti Tecnologici"></a>
     <h1>tool-preventivi-tp.html</h1>
-    <span class="version-badge" id="versionBadge">v8</span>
+    <span class="version-badge" id="versionBadge">v9</span>
   </div>
   <span class="step-counter" id="stepLabel">Step 1 di 7</span>
 </header>
@@ -1123,7 +1123,7 @@
 
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goTo(4)">← Indietro</button>
-      <button class="btn btn-lg" style="background:var(--blu);color:#fff;border:none;" onclick="document.getElementById('import_config_file').click()">📂 Importa Configurazione</button>
+      <button class="btn btn-lg" style="background:var(--blu);color:#fff;border:none;" onclick="r21PickInto('import_config_file','r21-config')">📂 Importa Configurazione</button>
       <input type="file" id="import_config_file" accept=".json,application/json" style="display:none" onchange="importConfig(this)">
       <button class="btn btn-print btn-lg" onclick="stampaPDF()">🖨️ Stampa / Salva PDF</button>
       <button class="btn btn-primary btn-lg" onclick="exportJson()">💾 Esporta Dati</button>
@@ -1694,13 +1694,59 @@ let _import = { tipo: null, forniture: [], sel: 0, ids: [] };
 // Le pill aprono direttamente il selettore di file: si sceglie il .json salvato
 // nella cartella del progetto (la finestra parte dall'ultima cartella usata; si
 // può comunque navigare e cambiare cartella).
+/* ================= RETE 21 - PERCORSI E NOMI AUTOMATICI ================= */
+/* Chrome/Edge ricordano la cartella per ogni "id": la prima volta ci navighi,
+   poi si riapre da sola. Stesso "id" = stessa cartella tra tutti i tool del dominio. */
+function r21Nome(cliente,tipo,ext){
+  var c=(cliente||'cliente').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'');
+  var d=new Date().toISOString().slice(0,10).replace(/-/g,''); // AAAAMMGG
+  return c+'_'+tipo+'_'+d+'.'+ext;
+}
+async function r21Salva(id,nomeFile,contenuto,mime){
+  mime=mime||'application/json';
+  if(window.showSaveFilePicker){
+    try{
+      var h=await window.showSaveFilePicker({id:id,suggestedName:nomeFile,
+        types:[{description:'File',accept:{[mime]:['.'+nomeFile.split('.').pop()]}}]});
+      var w=await h.createWritable();await w.write(contenuto);await w.close();return true;
+    }catch(e){if(e.name==='AbortError')return false;}
+  }
+  var blob=new Blob([contenuto],{type:mime});var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=nomeFile;a.click();URL.revokeObjectURL(a.href);return true;
+}
+async function r21Apri(id,accept){
+  accept=accept||{'application/json':['.json']};
+  if(window.showOpenFilePicker){
+    var arr=await window.showOpenFilePicker({id:id,types:[{description:'File',accept:accept}]});
+    var f=await arr[0].getFile();return{nome:f.name,testo:await f.text()};
+  }
+  return new Promise(function(res){var inp=document.createElement('input');inp.type='file';
+    inp.accept=Object.values(accept).flat().join(',');
+    inp.onchange=async function(){var f=inp.files[0];res({nome:f.name,testo:await f.text()});};inp.click();});
+}
+/* apre con memoria-cartella e inietta il file nell'input esistente: riusa i listener del tool */
+async function r21PickInto(inputId,folderId,accept){
+  accept=accept||{'application/json':['.json']};
+  if(window.showOpenFilePicker){
+    var handles;
+    try{ handles=await window.showOpenFilePicker({id:folderId,types:[{description:'File',accept:accept}]}); }
+    catch(e){ return; }
+    var file=await handles[0].getFile();
+    var inp=document.getElementById(inputId);
+    var dt=new DataTransfer();dt.items.add(file);inp.files=dt.files;
+    inp.dispatchEvent(new Event('change'));
+  }else{
+    document.getElementById(inputId).click();
+  }
+}
+
 function apriImport(tipo){
   _import.tipo = tipo;
   document.getElementById('import_paste').style.display = 'none';
   chiudiGuida();
   const inp = document.getElementById('import_file');
   inp.value = '';            // consente di riselezionare lo stesso file
-  inp.click();
+  r21PickInto('import_file','r21-json');   // apre 02_JSON_Bollette; fallback: click nativo
 }
 
 // Apertura del file scelto dall'operatore
@@ -2841,11 +2887,7 @@ function collectState() {
 function exportJson() {
   updateConfigCode();
   const nomeFile = document.getElementById('cfg_code').value || (buildConfigCode() + '.json');
-  const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = nomeFile;
-  a.click();
+  r21Salva('r21-config', nomeFile, JSON.stringify(collectState(), null, 2));
 }
 
 // ═══════════════════════════
@@ -2954,4 +2996,4 @@ refreshFilled();
 aggiornaNotaIdraulica();
 </script>
 </body>
-</html>                                                     
+</html>
